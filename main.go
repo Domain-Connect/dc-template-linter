@@ -244,7 +244,7 @@ func checkTemplate(templatePath string) {
 	}
 }
 
-const validChars = "-.0123456789_abcdefghijklmnopqrstuvwxy"
+const validChars = "-.0123456789_abcdefghijklmnopqrstuvwxyz"
 
 func checkInvalidChars(s string) bool {
 	for _, char := range s {
