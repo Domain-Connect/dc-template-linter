@@ -308,7 +308,11 @@ func checkRecord(rnum int, record Record, conflictingTypes map[string]string) {
 	switch record.Type {
 	case "CNAME", "NS":
 		if record.Host == "@" {
-			rlog.Error().Str("type", record.Type).Msg("record host must not be @")
+			if *Cloudflare {
+				rlog.Info().Str("type", record.Type).Msg("domains must use Cloudflares CNAME flattening setting")
+			} else {
+				rlog.Error().Str("type", record.Type).Msg("record host must not be @")
+			}
 			exitVal = 1
 		}
 		fallthrough
