@@ -225,7 +225,7 @@ func checkTemplate(templatePath string) {
 
 	conflictingTypes := make(map[string]string)
 	for rnum, record := range template.Records {
-		checkRecord(rnum, record, conflictingTypes)
+		template.checkRecord(rnum, record, conflictingTypes)
 	}
 
 	if *PrettyPrint || *Inplace {
@@ -290,7 +290,7 @@ func writeBack(templatePath string, out bytes.Buffer) {
 	tlog.Debug().Str("tmpfile", f.Name()).Msg("updated")
 }
 
-func checkRecord(rnum int, record Record, conflictingTypes map[string]string) {
+func (template Template) checkRecord(rnum int, record Record, conflictingTypes map[string]string) {
 	rlog := tlog.With().Int("record", rnum).Logger()
 	rlog.Debug().Str("type", record.Type).Str("groupid", record.GroupID).Str("host", record.Host).Msg("check record")
 
@@ -310,8 +310,8 @@ func checkRecord(rnum int, record Record, conflictingTypes map[string]string) {
 		if record.Host == "@" {
 			if *Cloudflare {
 				rlog.Info().Str("type", record.Type).Msg("domains must use Cloudflares CNAME flattening setting")
-			} else {
-				rlog.Error().Str("type", record.Type).Msg("record host must not be @")
+			} else if !template.HostRequired {
+				rlog.Error().Str("type", record.Type).Msg("record host must not be @ when template hostRequired is false")
 			}
 			exitVal = 1
 		}
