@@ -421,6 +421,8 @@ func checkRecord(rnum int, record Record, conflictingTypes map[string]string) {
 	if record.TTL < 0 || Max31b < record.TTL {
 		rlog.Error().Str("type", record.Type).Int("ttl", int(record.TTL)).Msg("invalid TTL")
 		exitVal = 1
+	} else if *Cloudflare && record.TTL == 0 {
+		rlog.Info().Str("type", record.Type).Int("ttl", 0).Msg("Cloudflare will replace zero ttl with value of 300")
 	}
 
 	if isVariable(record.GroupID) {
