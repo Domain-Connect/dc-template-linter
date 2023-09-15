@@ -214,10 +214,16 @@ func checkTemplate(templatePath string) {
 		tlog.Info().Msg("use of negative version number is not recommended")
 	}
 
-	if template.Shared {
-		tlog.Info().Msg("shared flag has been deprecated, use sharedProviderName instead")
+	if template.Shared && !template.SharedProviderName {
+		tlog.Info().Msg("shared flag is deprecated, use sharedProviderName as well")
 		// Override to ensure settings in pretty-print output are correct
-		template.Shared = false
+		template.Shared = true
+		template.SharedProviderName = true
+	}
+	if !template.Shared && template.SharedProviderName {
+		tlog.Info().Msg("sharedProviderName is in use, but shared backward compatability is not set")
+		// Override to ensure settings in pretty-print output are correct
+		template.Shared = true
 		template.SharedProviderName = true
 	}
 
