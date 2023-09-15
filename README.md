@@ -21,14 +21,16 @@ $GOPATH/bin/dc-template-linter ./Templates/*.json
 $GOPATH/bin/dc-template-linter --help
 Usage: dc-template-linter [options] <template.json> [...]
   -cloudflare
-        use Cloudflare specific template rules
+	use Cloudflare specific template rules
   -inplace
-        inplace write back pretty-print
+	inplace write back pretty-print
   -loglevel string
-        loglevel can be one of: panic fatal error warn info debug trace (default "info")
+	loglevel can be one of: panic fatal error warn info debug trace (default "info")
   -logos
-        check logo urls are reachable (requires network)
+	check logo urls are reachable (requires network)
   -pretty
-        pretty-print template json
+	pretty-print template json
+  -version
+	output version information and exit
 Warning. -inplace and -pretty will remove zero priority MX and SRV fields
 ```

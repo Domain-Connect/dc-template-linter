@@ -136,7 +136,13 @@ func main() {
 	Inplace = flag.Bool("inplace", false, "inplace write back pretty-print")
 	PrettyPrint = flag.Bool("pretty", false, "pretty-print template json")
 	loglevel := flag.String("loglevel", "info", "loglevel can be one of: panic fatal error warn info debug trace")
+	version := flag.Bool("version", false, "output version information and exit")
 	flag.Parse()
+
+	if *version {
+		fmt.Printf("dc-template-linter version %d\n", dcTemplateLinterVersion)
+		os.Exit(0)
+	}
 
 	setLoglevel(*loglevel)
 
