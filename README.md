@@ -15,6 +15,13 @@ git clone https://github.com/Domain-Connect/Templates.git &&
 $GOPATH/bin/dc-template-linter ./Templates/*.json
 ```
 
+When argument is not defined linter will read stdin.
+
+```
+curl -s https://raw.githubusercontent.com/Domain-Connect/Templates/master/acymailing.com.acymailer.json |
+$GOPATH/bin/dc-template-linter -logos -loglevel debug
+```
+
 ### Usage
 
 ```

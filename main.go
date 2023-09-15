@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path"
@@ -146,39 +145,39 @@ func main() {
 
 	setLoglevel(*loglevel)
 
-	if flag.NArg() < 1 {
-		flag.Usage()
-		log.Fatal().Msg("template file(s) command argument is missing")
-	}
-
 	collision = make(map[string]bool)
 
-	for _, arg := range flag.Args() {
-		checkTemplate(arg)
+	if flag.NArg() < 1 {
+		tlog = log.With().Str("template", "/dev/stdin").Logger()
+		if *Inplace {
+			tlog.Warn().Msg("disabling -inplace")
+			*Inplace = false
+		}
+		reader := bufio.NewReader(os.Stdin)
+		checkTemplate(reader, "")
+	} else {
+		for _, arg := range flag.Args() {
+			tlog = log.With().Str("template", arg).Logger()
+			f, err := os.Open(arg)
+			if err != nil {
+				tlog.Error().Err(err).Msg("cannot open file")
+				exitVal = 1
+				return
+			}
+			tlog.Debug().Msg("processing template")
+			checkTemplate(bufio.NewReader(f), arg)
+			f.Close()
+		}
 	}
 	os.Exit(exitVal)
 }
 
-func checkTemplate(templatePath string) {
-	tlog = log.With().Str("template", templatePath).Logger()
-
-	f, err := os.Open(templatePath)
-	if err != nil {
-		tlog.Error().Err(err).Msg("cannot open file")
-		exitVal = 1
-		return
-	}
-	defer f.Close()
-	tlog.Debug().Msg("processing template")
-
-	var r io.Reader
-	r = f
-
-	decoder := json.NewDecoder(r)
+func checkTemplate(f *bufio.Reader, templatePath string) {
+	decoder := json.NewDecoder(f)
 	decoder.DisallowUnknownFields()
 
 	var template Template
-	err = decoder.Decode(&template)
+	err := decoder.Decode(&template)
 
 	if err != nil {
 		tlog.Error().Err(err).Msg("json decode error")
