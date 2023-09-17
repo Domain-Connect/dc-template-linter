@@ -3,8 +3,6 @@
 //
 // Check results are communicated to humans with zerolog messages, that one
 // is recommended to configure in software calling this library.
-//
-// WARNING. This library is thread-unsafe.
 package libdctlint
 
 import (
@@ -92,11 +90,11 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 	decoder.DisallowUnknownFields()
 	var template internal.Template
 	err := decoder.Decode(&template)
+	exitVal |= CheckSeverity(internal.GetUnmarshalStatus())
 	if err != nil {
 		conf.tlog.Error().Err(err).Msg("json decode error")
-		return CheckFatal
+		return exitVal | CheckFatal
 	}
-	exitVal |= CheckSeverity(internal.GetUnmarshalStatus())
 
 	// Ensure ID fields use valid characters
 	if checkInvalidChars(template.ProviderID) {

@@ -1,10 +1,10 @@
 package internal
 
-// WARNING. This code is thread-unsafe.
-
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
+	"sync"
 
 	"github.com/rs/zerolog"
 )
@@ -65,23 +65,36 @@ var exitVal int
 // rather than output.
 var log zerolog.Logger
 
+// lock will ensure only one exitVal / logger pair is in use.
+var mu sync.Mutex
+
 // UnmarshalJSON can take string and integer version of an int and return
 // int. When int is integer all happens without complaints, but a string int
 // will cause warning and conversion to int. The json parsing will fail
 // completely when string is not integer at all.
 func (sint *SINT) UnmarshalJSON(b []byte) error {
+	locked := mu.TryLock()
+	if locked {
+		return errors.New("BUG: SetLogger() call was not used")
+	}
 	exitVal = 0
+
 	if b[0] != '"' {
-		return json.Unmarshal(b, (*int)(sint))
+		err := json.Unmarshal(b, (*int)(sint))
+		if err != nil {
+			exitVal = 4
+		}
+		return err
 	}
 	var s string
-	exitVal = 2
 	err := json.Unmarshal(b, &s)
 	if err != nil {
+		exitVal = 4
 		return err
 	}
 	i, err := strconv.Atoi(s)
 	if err != nil {
+		exitVal = 2
 		return err
 	}
 	exitVal = 1
@@ -91,9 +104,11 @@ func (sint *SINT) UnmarshalJSON(b []byte) error {
 }
 
 func SetLogger(l zerolog.Logger) {
+	mu.Lock()
 	log = l
 }
 
 func GetUnmarshalStatus() int {
+	defer mu.Unlock()
 	return exitVal
 }
