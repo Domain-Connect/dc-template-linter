@@ -1,5 +1,7 @@
 package internal
 
+// WARNING. This code is thread-unsafe.
+
 import (
 	"encoding/json"
 	"strconv"
@@ -52,16 +54,28 @@ type Record struct {
 
 type SINT int
 
-var Log zerolog.Logger
-var ExitVal int
+// exitVal is a side channel to catch UnmarshalJSON failure. The standard
+// golang json parser does not have means for extra values, and sending a
+// message via error is not great either - it will stop parsing, which is
+// annoying if early entry in records list is stringy entry but can be
+// recovered while causing warning.
+var exitVal int
 
+// log is similar side channel to exitVal but for json parser extra input
+// rather than output.
+var log zerolog.Logger
+
+// UnmarshalJSON can take string and integer version of an int and return
+// int. When int is integer all happens without complaints, but a string int
+// will cause warning and conversion to int. The json parsing will fail
+// completely when string is not integer at all.
 func (sint *SINT) UnmarshalJSON(b []byte) error {
-	ExitVal = 0
+	exitVal = 0
 	if b[0] != '"' {
 		return json.Unmarshal(b, (*int)(sint))
 	}
 	var s string
-	ExitVal = 2
+	exitVal = 2
 	err := json.Unmarshal(b, &s)
 	if err != nil {
 		return err
@@ -70,8 +84,16 @@ func (sint *SINT) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	ExitVal = 1
-	Log.Warn().Str("value", s).Msg("do not quote an integer, it makes it string")
+	exitVal = 1
+	log.Warn().Str("value", s).Msg("do not quote an integer, it makes it string")
 	*sint = SINT(i)
 	return nil
+}
+
+func SetLogger(l zerolog.Logger) {
+	log = l
+}
+
+func GetUnmarshalStatus() int {
+	return exitVal
 }

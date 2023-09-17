@@ -3,6 +3,8 @@
 //
 // Check results are communicated to humans with zerolog messages, that one
 // is recommended to configure in software calling this library.
+//
+// WARNING. This library is thread-unsafe.
 package libdctlint
 
 import (
@@ -37,10 +39,10 @@ const (
 	CheckFatal CheckSeverity = 1 << 2
 )
 
-// LibdctlintConf holds template checking instructions. The field type
-// FileName must be updated each time CheckTemplate() is called to match
-// with the bufio.Reader argument.
-type LibdctlintConf struct {
+// Conf holds template checking instructions. The field type FileName must
+// be updated each time CheckTemplate() is called to match with the
+// bufio.Reader argument.
+type Conf struct {
 	FileName    string
 	tlog        zerolog.Logger
 	collision   map[string]bool
@@ -65,8 +67,8 @@ type LibdctlintConf struct {
 // The argument prettyPrint will do the same as inplace, but will output
 // print out to standard out. When both prettyPrint and inplace defined the
 // library will prefer applying inplace.
-func NewConf(checkLogos, cloudflare, inplace, prettyPrint bool) LibdctlintConf {
-	return LibdctlintConf{
+func NewConf(checkLogos, cloudflare, inplace, prettyPrint bool) Conf {
+	return Conf{
 		collision:   make(map[string]bool),
 		checkLogos:  checkLogos,
 		cloudflare:  cloudflare,
@@ -76,43 +78,47 @@ func NewConf(checkLogos, cloudflare, inplace, prettyPrint bool) LibdctlintConf {
 }
 
 // CheckTemplate takes bufio.Reader as an argument and will run template
-// checks according to the LibdctlintConf configuration. Please remember to
+// checks according to the Conf configuration. Please remember to
 // set conf.FileName appropriately before calling this function to avoid
 // confusing results.
-func (conf *LibdctlintConf) CheckTemplate(f *bufio.Reader) CheckSeverity {
+func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
+	// A single template check init
 	exitVal := CheckOK
 	conf.tlog = log.With().Str("template", conf.FileName).Logger()
-	internal.Log = conf.tlog
+	internal.SetLogger(conf.tlog)
 
+	// Decode json
 	decoder := json.NewDecoder(f)
 	decoder.DisallowUnknownFields()
-
 	var template internal.Template
 	err := decoder.Decode(&template)
 	if err != nil {
 		conf.tlog.Error().Err(err).Msg("json decode error")
 		return CheckFatal
 	}
-	if internal.ExitVal != 0 {
-		exitVal |= CheckSeverity(internal.ExitVal)
-	}
+	exitVal |= CheckSeverity(internal.GetUnmarshalStatus())
 
+	// Ensure ID fields use valid characters
 	if checkInvalidChars(template.ProviderID) {
 		conf.tlog.Error().Str("providerId", template.ProviderID).Msg("providerId contains invalid characters")
 		exitVal |= CheckError
 	}
-
 	if checkInvalidChars(template.ServiceID) {
 		conf.tlog.Error().Str("serviceId", template.ServiceID).Msg("serviceId contains invalid characters")
 		exitVal |= CheckError
 	}
 
+	// Detect ID collisions _across multiple_ templates
 	if _, found := conf.collision[template.ProviderID+"/"+template.ServiceID]; found {
-		conf.tlog.Error().Str("providerId", template.ProviderID).Str("serviceId", template.ServiceID).Msg("duplicate provierId + serviceId detected")
+		conf.tlog.Error().
+			Str("providerId", template.ProviderID).
+			Str("serviceId", template.ServiceID).
+			Msg("duplicate provierId + serviceId detected")
 		exitVal |= CheckError
 	}
 	conf.collision[template.ProviderID+"/"+template.ServiceID] = true
 
+	// Check 'validate:' fields in internal/json.go definitions
 	Validator := validator.New()
 	err = Validator.Struct(template)
 	if err != nil {
@@ -122,10 +128,10 @@ func (conf *LibdctlintConf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 		}
 	}
 
+	// Field checks provided by this file
 	if template.Version < 0 {
 		conf.tlog.Info().Msg("use of negative version number is not recommended")
 	}
-
 	if template.Shared && !template.SharedProviderName {
 		conf.tlog.Info().Msg("shared flag is deprecated, use sharedProviderName as well")
 		// Override to ensure settings in pretty-print output are correct
@@ -133,38 +139,47 @@ func (conf *LibdctlintConf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 		template.SharedProviderName = true
 	}
 	if !template.Shared && template.SharedProviderName {
-		conf.tlog.Info().Msg("sharedProviderName is in use, but shared backward compatability is not set")
+		conf.tlog.Info().Msg("sharedProviderName is in use, but shared backward compatibility is not set")
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
 	}
 
+	// Logo url reachability check
 	if err := conf.isUnreachable(template.Logo); err != nil {
 		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).Msg("logo check failed")
 	}
 
+	// DNS provider specific checks
 	if conf.cloudflare {
 		exitVal |= conf.cloudflareTemplateChecks(template)
 	}
 
+	// Template records checks
 	conflictingTypes := make(map[string]string)
 	for rnum, record := range template.Records {
 		exitVal |= conf.checkRecord(template, rnum, record, conflictingTypes)
 	}
 
+	// Pretty printing and/or inplace write output
 	if conf.prettyPrint || conf.inplace {
-		pp, err := json.Marshal(template)
+		// Convert to json
+		marshaled, err := json.Marshal(template)
 		if err != nil {
 			conf.tlog.Error().Err(err).Msg("json marshaling failed")
-			return CheckError
+			return exitVal | CheckError
 		}
+
+		// Make output pretty
 		var out bytes.Buffer
-		err = json.Indent(&out, pp, "", "    ")
+		err = json.Indent(&out, marshaled, "", "    ")
 		if err != nil {
 			conf.tlog.Error().Err(err).Msg("json indenting failed")
-			return CheckError
+			return exitVal | CheckError
 		}
 		fmt.Fprintf(&out, "\n")
+
+		// Decide where to write
 		if conf.inplace {
 			exitVal |= conf.writeBack(out)
 		} else {
@@ -175,6 +190,7 @@ func (conf *LibdctlintConf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 			}
 		}
 	}
+
 	return exitVal
 }
 
@@ -189,11 +205,11 @@ func checkInvalidChars(s string) bool {
 	return false
 }
 
-func (conf *LibdctlintConf) isUnreachable(logoUrl string) error {
-	if !conf.checkLogos || logoUrl == "" {
+func (conf *Conf) isUnreachable(logoURL string) error {
+	if !conf.checkLogos || logoURL == "" {
 		return nil
 	}
-	resp, err := http.Get(logoUrl)
+	resp, err := http.Get(logoURL)
 	if err != nil {
 		return err
 	}
@@ -203,41 +219,48 @@ func (conf *LibdctlintConf) isUnreachable(logoUrl string) error {
 	return nil
 }
 
-func (conf *LibdctlintConf) writeBack(out bytes.Buffer) CheckSeverity {
-	f, err := os.CreateTemp("./", path.Base(conf.FileName))
+func (conf *Conf) writeBack(out bytes.Buffer) CheckSeverity {
+	// Create temporary file
+	outfile, err := os.CreateTemp("./", path.Base(conf.FileName))
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could not create temporary file")
 		return CheckError
 	}
-	defer f.Close()
-	w := bufio.NewWriter(f)
-	_, err = out.WriteTo(w)
+	defer outfile.Close()
+
+	// Write to temporary file
+	writer := bufio.NewWriter(outfile)
+	_, err = out.WriteTo(writer)
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could write to temporary file")
 		return CheckError
 	}
-	w.Flush()
-	err = os.Rename(f.Name(), conf.FileName)
+	writer.Flush()
+
+	// Move temporary file where the original file is
+	err = os.Rename(outfile.Name(), conf.FileName)
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could not move template back inplace")
 		return CheckWarn
 	}
-	conf.tlog.Debug().Str("tmpfile", f.Name()).Msg("updated")
+	conf.tlog.Debug().Str("tmpfile", outfile.Name()).Msg("updated")
 	return CheckOK
 }
 
 const strCNAME = "CNAME"
 
-func (conf *LibdctlintConf) checkRecord(
+func (conf *Conf) checkRecord(
 	template internal.Template,
 	rnum int,
 	record internal.Record,
 	conflictingTypes map[string]string,
 ) CheckSeverity {
+	// A record specific init
 	exitVal := CheckOK
 	rlog := conf.tlog.With().Int("record", rnum).Logger()
 	rlog.Debug().Str("type", record.Type).Str("groupid", record.GroupID).Str("host", record.Host).Msg("check record")
 
+	// Try to catch CNAME usage with other records
 	if t, ok := conflictingTypes[record.GroupID+"/"+record.Host]; ok && (t == strCNAME || record.Type == strCNAME) {
 		rlog.Error().
 			Str("groupid", record.GroupID).
@@ -249,6 +272,7 @@ func (conf *LibdctlintConf) checkRecord(
 	}
 	conflictingTypes[record.GroupID+"/"+record.Host] = record.Type
 
+	// The type specific checks are mostly from the Domain Connect spec
 	switch record.Type {
 	case strCNAME, "NS":
 		if record.Host == "@" {
@@ -283,11 +307,9 @@ func (conf *LibdctlintConf) checkRecord(
 			if record.TxtCMP != "" {
 				rlog.Info().Msg("Cloudflare does not support txtConflictMatchingPrefix record settings")
 			}
-		} else {
-			if record.TxtCMM == "Prefix" && record.TxtCMP == "" {
-				rlog.Warn().Str("type", record.Type).Msg("record txtConflictMatchingPrefix is not defined")
-				exitVal |= CheckWarn
-			}
+		} else if record.TxtCMM == "Prefix" && record.TxtCMP == "" {
+			rlog.Warn().Str("type", record.Type).Msg("record txtConflictMatchingPrefix is not defined")
+			exitVal |= CheckWarn
 		}
 
 	case "MX":
@@ -326,7 +348,7 @@ func (conf *LibdctlintConf) checkRecord(
 			exitVal |= CheckError
 		}
 		if record.Weight < 0 || max31b < record.Weight {
-			rlog.Error().Str("type", record.Type).Int("weigth", int(record.Weight)).Msg("invalid weigth")
+			rlog.Error().Str("type", record.Type).Int("weight", int(record.Weight)).Msg("invalid weight")
 			exitVal |= CheckError
 		}
 		if record.Port < 1 || max16b < record.Port {
@@ -358,11 +380,19 @@ func (conf *LibdctlintConf) checkRecord(
 		rlog.Info().Str("type", record.Type).Msg("unusual record type check DNS providers if they support it")
 	}
 
+	// The spec does not tell type cannot be variable, but if/when it is
+	// reasoning about effects of applying a template becomes quite hard
+	// if not impossible. Without dubt a variable type will cascade need
+	// to use variable in all other parameters, and that means service
+	// provider will basically grant oneself 100% full access to clients
+	// DNS content. Domain Connect is expected to be powerful, but that
+	// is too much power.
 	if isVariable(record.Type) {
 		rlog.Error().Msg("record type must not be variable")
 		exitVal |= CheckError
 	}
 
+	// A calid json int can be out of bounds in DNS
 	if record.TTL < 0 || max31b < record.TTL {
 		rlog.Error().Str("type", record.Type).Int("ttl", int(record.TTL)).Msg("invalid TTL")
 		exitVal |= CheckError
@@ -370,16 +400,17 @@ func (conf *LibdctlintConf) checkRecord(
 		rlog.Info().Str("type", record.Type).Int("ttl", 0).Msg("Cloudflare will replace zero ttl with value of 300")
 	}
 
+	// Enforce Domain Connect spec
 	if isVariable(record.GroupID) {
 		rlog.Error().Msg("record groupId must not be variable")
 		exitVal |= CheckError
 	}
-
 	if isVariable(record.TxtCMP) {
 		rlog.Error().Msg("record txtConflictMatchingPrefix must not be variable")
 		exitVal |= CheckError
 	}
 
+	// DNS provider specific checks
 	if conf.cloudflare {
 		if record.Essential != "" {
 			rlog.Info().Msg("Cloudflare does not support essential record settings")
@@ -389,6 +420,7 @@ func (conf *LibdctlintConf) checkRecord(
 }
 
 func isInvalidProtocol(proto string) bool {
+	// in SRV record
 	switch strings.ToLower(proto) {
 	case "_tcp", "_udp", "_tls":
 		return false
@@ -400,7 +432,7 @@ func isVariable(s string) bool {
 	return strings.Count(s, "%") > 1
 }
 
-func (conf *LibdctlintConf) cloudflareTemplateChecks(template internal.Template) CheckSeverity {
+func (conf *Conf) cloudflareTemplateChecks(template internal.Template) CheckSeverity {
 	exitVal := CheckOK
 	if template.SyncBlock {
 		conf.tlog.Error().Msg("Cloudflare does not support syncBlock")

@@ -1,8 +1,9 @@
 package main
 
 /*
- * This is a Domain Connect template lint tool to validate contents of a template file.
- * These templates are usually found from https://github.com/domain-connect/templates
+ * This is a Domain Connect template lint tool to validate contents of a
+ * template file. These templates are usually found from
+ * https://github.com/domain-connect/templates
  *
  * Questions about the tool can be sent to <domain-connect@cloudflare.com>
  */
@@ -30,11 +31,7 @@ func setLoglevel(loglevel string) {
 }
 
 func main() {
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] <template.json> [...]\n", os.Args[0])
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "Warning. -inplace and -pretty will remove zero priority MX and SRV fields\n")
-	}
+	// Init logging. Essentially colors or no colors?
 	if isatty.IsTerminal(os.Stderr.Fd()) {
 		log.Logger = log.Output(
 			zerolog.ConsoleWriter{
@@ -45,6 +42,13 @@ func main() {
 	} else {
 		zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	}
+
+	// Command line option handling
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <template.json> [...]\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "Warning. -inplace and -pretty will remove zero priority MX and SRV fields\n")
+	}
 	checkLogos := flag.Bool("logos", false, "check logo urls are reachable (requires network)")
 	cloudflare := flag.Bool("cloudflare", false, "use Cloudflare specific template rules")
 	inplace := flag.Bool("inplace", false, "inplace write back pretty-print")
@@ -53,16 +57,18 @@ func main() {
 	version := flag.Bool("version", false, "output version information and exit")
 	flag.Parse()
 
+	// Did user want to know version
 	if *version {
 		fmt.Printf("dc-template-linter version %d\n", dcTemplateLinterVersion)
 		os.Exit(0)
 	}
 
+	// Runtime init
 	setLoglevel(*loglevel)
-
 	exitVal := libdctlint.CheckOK
 
 	if flag.NArg() < 1 {
+		// No arguments, read from stdin
 		conf := libdctlint.NewConf(
 			*checkLogos,
 			*cloudflare,
@@ -77,6 +83,8 @@ func main() {
 		reader := bufio.NewReader(os.Stdin)
 		exitVal = conf.CheckTemplate(reader)
 	} else {
+		// Each argument is expected to be a template file,
+		// loop over them.
 		conf := libdctlint.NewConf(
 			*checkLogos,
 			*cloudflare,
