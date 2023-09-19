@@ -84,6 +84,7 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 	exitVal := CheckOK
 	conf.tlog = log.With().Str("template", conf.FileName).Logger()
 	internal.SetLogger(conf.tlog)
+	conf.tlog.Debug().Msg("starting template check")
 
 	// Decode json
 	decoder := json.NewDecoder(f)
@@ -150,6 +151,7 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 
 	// DNS provider specific checks
 	if conf.cloudflare {
+		conf.tlog.Debug().Msg("performing Cloudflare checks")
 		exitVal |= conf.cloudflareTemplateChecks(template)
 	}
 
@@ -189,6 +191,7 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 		}
 	}
 
+	conf.tlog.Debug().Uint32("exitVal", uint32(exitVal)).Msg("template check done")
 	return exitVal
 }
 
@@ -207,6 +210,7 @@ func (conf *Conf) isUnreachable(logoURL string) error {
 	if !conf.checkLogos || logoURL == "" {
 		return nil
 	}
+	conf.tlog.Debug().Str("url", logoURL).Msg("checking logo url")
 	resp, err := http.Get(logoURL)
 	if err != nil {
 		return err
