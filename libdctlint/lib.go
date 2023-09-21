@@ -144,6 +144,15 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 		template.SharedProviderName = true
 	}
 
+	if isVariable(template.ProviderName) {
+		conf.tlog.Error().Msg("providerName must not be variable")
+		exitVal |= CheckError
+	}
+	if isVariable(template.ServiceName) {
+		conf.tlog.Error().Msg("serviceName must not be variable")
+		exitVal |= CheckError
+	}
+
 	// Logo url reachability check
 	if err := conf.isUnreachable(template.Logo); err != nil {
 		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).Msg("logo check failed")

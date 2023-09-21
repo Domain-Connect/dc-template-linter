@@ -1,3 +1,3 @@
 package main
 
-const dcTemplateLinterVersion uint = 15
+const dcTemplateLinterVersion uint = 16
