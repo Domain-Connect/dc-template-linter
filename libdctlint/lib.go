@@ -156,6 +156,7 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 	// Logo url reachability check
 	if err := conf.isUnreachable(template.Logo); err != nil {
 		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).Msg("logo check failed")
+		exitVal |= CheckWarn
 	}
 
 	// DNS provider specific checks
