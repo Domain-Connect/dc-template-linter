@@ -15,20 +15,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/Domain-Connect/dc-template-linter/internal"
 	"github.com/Domain-Connect/dc-template-linter/libdctlint"
 
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
-
-func setLoglevel(loglevel string) {
-	level, err := zerolog.ParseLevel(loglevel)
-	if err != nil {
-		log.Fatal().Err(err).Msg("invalid loglevel")
-	}
-	zerolog.SetGlobalLevel(level)
-}
 
 func main() {
 	// Init logging. Essentially colors or no colors?
@@ -64,7 +57,7 @@ func main() {
 	}
 
 	// Runtime init
-	setLoglevel(*loglevel)
+	internal.SetLoglevel(*loglevel)
 	exitVal := libdctlint.CheckOK
 
 	if flag.NArg() < 1 {

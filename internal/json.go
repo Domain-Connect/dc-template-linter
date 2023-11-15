@@ -61,9 +61,9 @@ type SINT int
 // recovered while causing warning.
 var exitVal int
 
-// log is similar side channel to exitVal but for json parser extra input
-// rather than output.
-var log zerolog.Logger
+// smuggledLog is similar side channel to exitVal but for json parser extra
+// input rather than output.
+var smuggledLog zerolog.Logger
 
 // lock will ensure only one exitVal / logger pair is in use.
 var mu sync.Mutex
@@ -98,14 +98,14 @@ func (sint *SINT) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	exitVal = 1
-	log.Warn().Str("value", s).Msg("do not quote an integer, it makes it string")
+	smuggledLog.Warn().Str("value", s).Msg("do not quote an integer, it makes it string")
 	*sint = SINT(i)
 	return nil
 }
 
 func SetLogger(l zerolog.Logger) {
 	mu.Lock()
-	log = l
+	smuggledLog = l
 }
 
 func GetUnmarshalStatus() int {

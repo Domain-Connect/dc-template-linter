@@ -15,7 +15,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Domain-Connect/dc-template-linter/libdctlint/internal"
+	"github.com/Domain-Connect/dc-template-linter/internal"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
@@ -75,13 +75,9 @@ func NewConf(checkLogos, cloudflare, inplace, prettyPrint bool) Conf {
 	}
 }
 
-// CheckTemplate takes bufio.Reader as an argument and will run template
-// checks according to the Conf configuration. Please remember to
-// set conf.FileName appropriately before calling this function to avoid
-// confusing results.
-func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
-	// A single template check init
-	exitVal := CheckOK
+// GetAndCheckTemplate is used in dctweb. Do not use applications
+// outside of this project.
+func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, CheckSeverity) {
 	conf.tlog = log.With().Str("template", conf.FileName).Logger()
 	internal.SetLogger(conf.tlog)
 	conf.tlog.Debug().Msg("starting template check")
@@ -91,12 +87,30 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 	decoder.DisallowUnknownFields()
 	var template internal.Template
 	err := decoder.Decode(&template)
-	exitVal |= CheckSeverity(internal.GetUnmarshalStatus())
+	exitVal := CheckSeverity(internal.GetUnmarshalStatus())
 	if err != nil {
 		conf.tlog.Error().Err(err).Msg("json decode error")
-		return exitVal | CheckFatal
+		return template, CheckFatal
 	}
+	exitVal |= conf.checkTemplate(f, template)
+	return template, exitVal
+}
 
+// CheckTemplate takes bufio.Reader as an argument and will run template
+// checks according to the Conf configuration. Please remember to
+// set conf.FileName appropriately before calling this function to avoid
+// confusing results.
+func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
+	// A single template check init
+	template, exitVal := conf.GetAndCheckTemplate(f)
+	if exitVal == CheckFatal {
+		return CheckFatal
+	}
+	return conf.checkTemplate(f, template)
+}
+
+func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) CheckSeverity {
+	exitVal := CheckOK
 	// Ensure ID fields use valid characters
 	if checkInvalidChars(template.ProviderID) {
 		conf.tlog.Error().Str("providerId", template.ProviderID).Msg("providerId contains invalid characters")
@@ -119,7 +133,7 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 
 	// Check 'validate:' fields in internal/json.go definitions
 	Validator := validator.New()
-	err = Validator.Struct(template)
+	err := Validator.Struct(template)
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
 			conf.tlog.Warn().Err(err).Msg("template field validation")
