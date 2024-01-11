@@ -102,11 +102,8 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, Check
 // confusing results.
 func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
 	// A single template check init
-	template, exitVal := conf.GetAndCheckTemplate(f)
-	if exitVal == CheckFatal {
-		return CheckFatal
-	}
-	return conf.checkTemplate(f, template)
+	_, exitVal := conf.GetAndCheckTemplate(f)
+	return exitVal
 }
 
 func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) CheckSeverity {
