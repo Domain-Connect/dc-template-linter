@@ -352,10 +352,6 @@ func (conf *Conf) checkRecord(
 		}
 
 	case "SRV":
-		if record.Name == "" {
-			rlog.Error().Str("type", record.Type).Msg("record name must not be empty")
-			exitVal |= CheckError
-		}
 		if record.Target == "" {
 			rlog.Error().Str("type", record.Type).Msg("record target must not be empty")
 			exitVal |= CheckError
