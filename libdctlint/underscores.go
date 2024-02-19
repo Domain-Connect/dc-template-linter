@@ -80,8 +80,7 @@ var rfc8552 = map[string][]uint16{
 	"_xmpp":                    {TypeSRV, TypeURI},
 }
 
-func (conf *Conf) checkUnderscoreNames(rrtype, host string) CheckSeverity {
-	exitVal := CheckOK
+func (conf *Conf) checkUnderscoreNames(rrtype, host string) {
 	rlog := conf.tlog.With().Str("type", rrtype).Str("link", "https://www.iana.org/assignments/dns-parameters/dns-parameters.txt").Logger()
 
 	for _, elem := range strings.Split(host, ".") {
@@ -96,16 +95,12 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) CheckSeverity {
 
 		templateType, ok := recordToType[strings.ToUpper(rrtype)]
 		if !ok {
-			rlog.Warn().Str("host", elem).Msg("global definition does not have this host and type pair")
-			exitVal |= CheckWarn
+			rlog.Info().Str("host", elem).Msg("global definition does not have this host and type pair")
 			continue
 		}
 
 		if !slices.Contains(okTypes, templateType) {
-			rlog.Warn().Str("host", elem).Msg("global definition does not have this host and type pair")
-			exitVal |= CheckWarn
+			rlog.Info().Str("host", elem).Msg("global definition does not have this host and type pair")
 		}
 	}
-
-	return exitVal
 }

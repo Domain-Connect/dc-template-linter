@@ -381,7 +381,7 @@ func (conf *Conf) checkRecord(
 			exitVal |= CheckError
 		}
 
-		exitVal |= conf.checkUnderscoreNames(record.Type, record.Service)
+		conf.checkUnderscoreNames(record.Type, record.Service)
 		underscoreChecked = true
 
 	case "SPFM":
@@ -410,7 +410,7 @@ func (conf *Conf) checkRecord(
 
 	// Check use of underscore host names.
 	if !underscoreChecked {
-		exitVal |= conf.checkUnderscoreNames(record.Type, record.Host)
+		conf.checkUnderscoreNames(record.Type, record.Host)
 	}
 
 	// The spec does not tell type cannot be variable, but if/when it is
