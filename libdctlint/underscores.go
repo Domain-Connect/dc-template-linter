@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	TypeCNAME      uint16 = 5
 	TypeNULL       uint16 = 10
 	TypeTXT        uint16 = 16
 	TypeSRV        uint16 = 33
@@ -37,7 +38,7 @@ var rfc8552 = map[string][]uint16{
 	"_dccp":                    {TypeSRV, TypeURI},
 	"_dmarc":                   {TypeTXT},
 	"_dns":                     {TypeSVCB},
-	"_domainkey":               {TypeTXT},
+	"_domainkey":               {TypeTXT, TypeCNAME},
 	"_email":                   {TypeURI},
 	"_ems":                     {TypeURI},
 	"_fax":                     {TypeURI},
