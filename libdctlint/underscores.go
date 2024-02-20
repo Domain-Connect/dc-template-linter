@@ -20,6 +20,7 @@ const (
 )
 
 var recordToType = map[string]uint16{
+	"CNAME":      TypeCNAME,
 	"NULL":       TypeNULL,
 	"TXT":        TypeTXT,
 	"SRV":        TypeSRV,
