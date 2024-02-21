@@ -288,8 +288,6 @@ func (conf *Conf) checkRecord(
 	}
 	conflictingTypes[record.GroupID+"/"+record.Host] = record.Type
 
-	underscoreChecked := false
-
 	// The type specific checks are mostly from the Domain Connect spec
 	switch record.Type {
 	case strCNAME, "NS":
@@ -372,9 +370,6 @@ func (conf *Conf) checkRecord(
 			exitVal |= internal.CheckError
 		}
 
-		exitVal |= conf.checkUnderscoreNames(record.Type, record.Service)
-		underscoreChecked = true
-
 	case "SPFM":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
@@ -402,9 +397,7 @@ func (conf *Conf) checkRecord(
 	}
 
 	// Check use of underscore host names.
-	if !underscoreChecked {
-		exitVal |= conf.checkUnderscoreNames(record.Type, record.Host)
-	}
+	exitVal |= conf.checkUnderscoreNames(record.Type, record.Host)
 
 	// The spec does not tell type cannot be variable, but if/when it is
 	// reasoning about effects of applying a template becomes quite hard
