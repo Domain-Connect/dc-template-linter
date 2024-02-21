@@ -3,6 +3,8 @@ package libdctlint
 import (
 	"strings"
 
+	"github.com/Domain-Connect/dc-template-linter/internal"
+
 	"golang.org/x/exp/slices"
 )
 
@@ -82,8 +84,9 @@ var rfc8552 = map[string][]uint16{
 	"_xmpp":                    {TypeSRV, TypeURI},
 }
 
-func (conf *Conf) checkUnderscoreNames(rrtype, host string) {
+func (conf *Conf) checkUnderscoreNames(rrtype, host string) internal.CheckSeverity {
 	rlog := conf.tlog.With().Str("type", rrtype).Str("link", "https://www.iana.org/assignments/dns-parameters/dns-parameters.txt").Logger()
+	exitVal := internal.CheckOK
 
 	for _, elem := range strings.Split(host, ".") {
 		if len(elem) == 0 || elem[0] != '_' {
@@ -92,17 +95,22 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) {
 		okTypes, ok := rfc8552[strings.ToLower(elem)]
 		if !ok {
 			rlog.Info().Str("host", elem).Msg("global definition does not define this underscore host")
+			exitVal |= internal.CheckInfo
 			continue
 		}
 
 		templateType, ok := recordToType[strings.ToUpper(rrtype)]
 		if !ok {
 			rlog.Info().Str("host", elem).Msg("global definition does not have this host and type pair")
+			exitVal |= internal.CheckInfo
 			continue
 		}
 
 		if !slices.Contains(okTypes, templateType) {
 			rlog.Info().Str("host", elem).Msg("global definition does not have this host and type pair")
+			exitVal |= internal.CheckInfo
 		}
 	}
+
+	return exitVal
 }

@@ -47,6 +47,7 @@ func main() {
 	inplace := flag.Bool("inplace", false, "inplace write back pretty-print")
 	prettyPrint := flag.Bool("pretty", false, "pretty-print template json")
 	loglevel := flag.String("loglevel", "info", "loglevel can be one of: panic fatal error warn info debug trace")
+	toleration := flag.String("tolerate", "info", "non-zero return loglevel treshold: any error warn info none")
 	version := flag.Bool("version", false, "output version information and exit")
 	flag.Parse()
 
@@ -58,7 +59,7 @@ func main() {
 
 	// Runtime init
 	internal.SetLoglevel(*loglevel)
-	exitVal := libdctlint.CheckOK
+	exitVal := internal.CheckOK
 
 	if flag.NArg() < 1 {
 		// No arguments, read from stdin
@@ -89,7 +90,7 @@ func main() {
 			f, err := os.Open(arg)
 			if err != nil {
 				log.Error().Err(err).Msg("cannot open file")
-				exitVal = 1
+				exitVal = internal.CheckError
 				continue
 			}
 			log.Debug().Str("template", arg).Msg("processing template")
@@ -97,5 +98,19 @@ func main() {
 			f.Close()
 		}
 	}
+
+	switch *toleration {
+	case "any":
+		exitVal = internal.CheckOK
+	case "error":
+		exitVal &= internal.CheckFatal
+	case "warn":
+		exitVal &= internal.CheckFatal | internal.CheckError
+	case "info":
+		exitVal &= internal.CheckFatal | internal.CheckError | internal.CheckWarn
+	default:
+		// none
+	}
+
 	os.Exit(int(exitVal))
 }

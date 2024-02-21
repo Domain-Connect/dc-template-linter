@@ -59,7 +59,7 @@ type SINT int
 // message via error is not great either - it will stop parsing, which is
 // annoying if early entry in records list is stringy entry but can be
 // recovered while causing warning.
-var exitVal int
+var exitVal CheckSeverity
 
 // smuggledLog is similar side channel to exitVal but for json parser extra
 // input rather than output.
@@ -77,27 +77,27 @@ func (sint *SINT) UnmarshalJSON(b []byte) error {
 	if locked {
 		return errors.New("BUG: SetLogger() call was not used")
 	}
-	exitVal = 0
+	exitVal = CheckOK
 
 	if b[0] != '"' {
 		err := json.Unmarshal(b, (*int)(sint))
 		if err != nil {
-			exitVal = 4
+			exitVal = CheckError
 		}
 		return err
 	}
 	var s string
 	err := json.Unmarshal(b, &s)
 	if err != nil {
-		exitVal = 4
+		exitVal = CheckError
 		return err
 	}
 	i, err := strconv.Atoi(s)
 	if err != nil {
-		exitVal = 2
+		exitVal = CheckError
 		return err
 	}
-	exitVal = 1
+	exitVal = CheckWarn
 	smuggledLog.Warn().Str("value", s).Msg("do not quote an integer, it makes it string")
 	*sint = SINT(i)
 	return nil
@@ -108,7 +108,7 @@ func SetLogger(l zerolog.Logger) {
 	smuggledLog = l
 }
 
-func GetUnmarshalStatus() int {
+func GetUnmarshalStatus() CheckSeverity {
 	defer mu.Unlock()
 	return exitVal
 }

@@ -27,16 +27,6 @@ const (
 	max31b = 1<<31 - 1
 )
 
-// A CheckSeverity represent status of the template check.
-type CheckSeverity uint32
-
-const (
-	CheckOK    CheckSeverity = 0
-	CheckWarn  CheckSeverity = 1 << 0
-	CheckError CheckSeverity = 1 << 1
-	CheckFatal CheckSeverity = 1 << 2
-)
-
 // Conf holds template checking instructions. The field type FileName must
 // be updated each time CheckTemplate() is called to match with the
 // bufio.Reader argument.
@@ -77,7 +67,7 @@ func NewConf(checkLogos, cloudflare, inplace, prettyPrint bool) Conf {
 
 // GetAndCheckTemplate is used in dctweb. Do not use applications
 // outside of this project.
-func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, CheckSeverity) {
+func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, internal.CheckSeverity) {
 	conf.tlog = log.With().Str("template", conf.FileName).Logger()
 	internal.SetLogger(conf.tlog)
 	conf.tlog.Debug().Msg("starting template check")
@@ -87,10 +77,10 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, Check
 	decoder.DisallowUnknownFields()
 	var template internal.Template
 	err := decoder.Decode(&template)
-	exitVal := CheckSeverity(internal.GetUnmarshalStatus())
+	exitVal := internal.GetUnmarshalStatus()
 	if err != nil {
 		conf.tlog.Error().Err(err).Msg("json decode error")
-		return template, CheckFatal
+		return template, internal.CheckFatal
 	}
 	exitVal |= conf.checkTemplate(f, template)
 	return template, exitVal
@@ -100,22 +90,22 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, Check
 // checks according to the Conf configuration. Please remember to
 // set conf.FileName appropriately before calling this function to avoid
 // confusing results.
-func (conf *Conf) CheckTemplate(f *bufio.Reader) CheckSeverity {
+func (conf *Conf) CheckTemplate(f *bufio.Reader) internal.CheckSeverity {
 	// A single template check init
 	_, exitVal := conf.GetAndCheckTemplate(f)
 	return exitVal
 }
 
-func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) CheckSeverity {
-	exitVal := CheckOK
+func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) internal.CheckSeverity {
+	exitVal := internal.CheckOK
 	// Ensure ID fields use valid characters
 	if checkInvalidChars(template.ProviderID) {
 		conf.tlog.Error().Str("providerId", template.ProviderID).Msg("providerId contains invalid characters")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 	if checkInvalidChars(template.ServiceID) {
 		conf.tlog.Error().Str("serviceId", template.ServiceID).Msg("serviceId contains invalid characters")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 
 	// Detect ID collisions _across multiple_ templates
@@ -124,7 +114,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) Che
 			Str("providerId", template.ProviderID).
 			Str("serviceId", template.ServiceID).
 			Msg("duplicate provierId + serviceId detected")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 	conf.collision[template.ProviderID+"/"+template.ServiceID] = true
 
@@ -134,22 +124,25 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) Che
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
 			conf.tlog.Warn().Err(err).Msg("template field validation")
-			exitVal |= CheckWarn
+			exitVal |= internal.CheckWarn
 		}
 	}
 
 	// Field checks provided by this file
 	if template.Version < 0 {
 		conf.tlog.Info().Msg("use of negative version number is not recommended")
+		exitVal |= internal.CheckInfo
 	}
 	if template.Shared && !template.SharedProviderName {
 		conf.tlog.Info().Msg("shared flag is deprecated, use sharedProviderName as well")
+		exitVal |= internal.CheckInfo
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
 	}
 	if !template.Shared && template.SharedProviderName {
 		conf.tlog.Info().Msg("sharedProviderName is in use, but shared backward compatibility is not set")
+		exitVal |= internal.CheckInfo
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
@@ -157,17 +150,17 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) Che
 
 	if isVariable(template.ProviderName) {
 		conf.tlog.Error().Msg("providerName must not be variable")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 	if isVariable(template.ServiceName) {
 		conf.tlog.Error().Msg("serviceName must not be variable")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 
 	// Logo url reachability check
 	if err := conf.isUnreachable(template.Logo); err != nil {
 		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).Msg("logo check failed")
-		exitVal |= CheckWarn
+		exitVal |= internal.CheckWarn
 	}
 
 	// DNS provider specific checks
@@ -188,7 +181,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) Che
 		marshaled, err := json.Marshal(template)
 		if err != nil {
 			conf.tlog.Error().Err(err).Msg("json marshaling failed")
-			return exitVal | CheckError
+			return exitVal | internal.CheckError
 		}
 
 		// Make output pretty
@@ -196,7 +189,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) Che
 		err = json.Indent(&out, marshaled, "", "    ")
 		if err != nil {
 			conf.tlog.Error().Err(err).Msg("json indenting failed")
-			return exitVal | CheckError
+			return exitVal | internal.CheckError
 		}
 		fmt.Fprintf(&out, "\n")
 
@@ -207,7 +200,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) Che
 			_, err = out.WriteTo(os.Stdout)
 			if err != nil {
 				conf.tlog.Error().Err(err).Msg("write failed")
-				exitVal |= CheckError
+				exitVal |= internal.CheckError
 			}
 		}
 	}
@@ -242,12 +235,12 @@ func (conf *Conf) isUnreachable(logoURL string) error {
 	return nil
 }
 
-func (conf *Conf) writeBack(out bytes.Buffer) CheckSeverity {
+func (conf *Conf) writeBack(out bytes.Buffer) internal.CheckSeverity {
 	// Create temporary file
 	outfile, err := os.CreateTemp("./", path.Base(conf.FileName))
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could not create temporary file")
-		return CheckError
+		return internal.CheckError
 	}
 	defer outfile.Close()
 
@@ -256,7 +249,7 @@ func (conf *Conf) writeBack(out bytes.Buffer) CheckSeverity {
 	_, err = out.WriteTo(writer)
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could write to temporary file")
-		return CheckError
+		return internal.CheckError
 	}
 	writer.Flush()
 
@@ -264,10 +257,10 @@ func (conf *Conf) writeBack(out bytes.Buffer) CheckSeverity {
 	err = os.Rename(outfile.Name(), conf.FileName)
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could not move template back inplace")
-		return CheckWarn
+		return internal.CheckWarn
 	}
 	conf.tlog.Debug().Str("tmpfile", outfile.Name()).Msg("updated")
-	return CheckOK
+	return internal.CheckOK
 }
 
 const strCNAME = "CNAME"
@@ -277,9 +270,9 @@ func (conf *Conf) checkRecord(
 	rnum int,
 	record internal.Record,
 	conflictingTypes map[string]string,
-) CheckSeverity {
+) internal.CheckSeverity {
 	// A record specific init
-	exitVal := CheckOK
+	exitVal := internal.CheckOK
 	rlog := conf.tlog.With().Int("record", rnum).Logger()
 	rlog.Debug().Str("type", record.Type).Str("groupid", record.GroupID).Str("host", record.Host).Msg("check record")
 
@@ -291,7 +284,7 @@ func (conf *Conf) checkRecord(
 			Str("type", record.Type).
 			Str("othertype", t).
 			Msg("CNAME cannot be mixed with other record types")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 	conflictingTypes[record.GroupID+"/"+record.Host] = record.Type
 
@@ -303,110 +296,114 @@ func (conf *Conf) checkRecord(
 		if record.Host == "@" {
 			if conf.cloudflare {
 				rlog.Info().Str("type", record.Type).Msg("domains must use Cloudflares CNAME flattening setting")
-				exitVal |= CheckWarn
+				exitVal |= internal.CheckInfo
 			} else if !template.HostRequired {
 				rlog.Error().Str("type", record.Type).Msg("record host must not be @ when template hostRequired is false")
-				exitVal |= CheckError
+				exitVal |= internal.CheckError
 			}
 		}
 		fallthrough
 	case "A", "AAAA":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 
 	case "TXT":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if record.Data == "" {
 			rlog.Error().Str("type", record.Type).Msg("record data must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if conf.cloudflare {
 			if record.TxtCMM != "" || record.TxtCMM == "None" {
 				rlog.Info().Msg("Cloudflare does not support txtConflictMatchingMode record settings")
+				exitVal |= internal.CheckInfo
 			}
 			if record.TxtCMP != "" {
 				rlog.Info().Msg("Cloudflare does not support txtConflictMatchingPrefix record settings")
+				exitVal |= internal.CheckInfo
 			}
 		} else if record.TxtCMM == "Prefix" && record.TxtCMP == "" {
 			rlog.Warn().Str("type", record.Type).Msg("record txtConflictMatchingPrefix is not defined")
-			exitVal |= CheckWarn
+			exitVal |= internal.CheckWarn
 		}
 
 	case "MX":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if record.PointsTo == "" {
 			rlog.Error().Str("type", record.Type).Msg("record pointsTo must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if record.Priority < 0 || max31b < record.Priority {
 			rlog.Error().Str("type", record.Type).Int("priority", int(record.Priority)).Msg("invalid priority")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 
 	case "SRV":
 		if record.Target == "" {
 			rlog.Error().Str("type", record.Type).Msg("record target must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if isInvalidProtocol(record.Protocol) {
 			rlog.Warn().Str("type", record.Type).Str("protocol", record.Protocol).Msg("invalid protocol")
-			exitVal |= CheckWarn
+			exitVal |= internal.CheckWarn
 		}
 		if record.Priority < 0 || max31b < record.Priority {
 			rlog.Error().Str("type", record.Type).Int("priority", int(record.Priority)).Msg("invalid priority")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if record.Service == "" {
 			rlog.Error().Str("type", record.Type).Msg("record service must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if record.Weight < 0 || max31b < record.Weight {
 			rlog.Error().Str("type", record.Type).Int("weight", int(record.Weight)).Msg("invalid weight")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if record.Port < 1 || max16b < record.Port {
 			rlog.Error().Str("type", record.Type).Int("port", int(record.Port)).Msg("invalid port")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 
-		conf.checkUnderscoreNames(record.Type, record.Service)
+		exitVal |= conf.checkUnderscoreNames(record.Type, record.Service)
 		underscoreChecked = true
 
 	case "SPFM":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 		if record.SPFRules == "" {
 			rlog.Error().Str("type", record.Type).Msg("record spfRules must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 
 	case "APEXCNAME":
 		if conf.cloudflare {
 			rlog.Info().Msg("Cloudflare does not support APEXCNAME, use CNAME instead")
+			exitVal |= internal.CheckInfo
 		}
 
 	case "REDIR301", "REDIR302":
 		if record.Target == "" {
 			rlog.Error().Str("type", record.Type).Msg("record target must not be empty")
-			exitVal |= CheckError
+			exitVal |= internal.CheckError
 		}
 	default:
 		rlog.Info().Str("type", record.Type).Msg("unusual record type check DNS providers if they support it")
+		exitVal |= internal.CheckInfo
 	}
 
 	// Check use of underscore host names.
 	if !underscoreChecked {
-		conf.checkUnderscoreNames(record.Type, record.Host)
+		exitVal |= conf.checkUnderscoreNames(record.Type, record.Host)
 	}
 
 	// The spec does not tell type cannot be variable, but if/when it is
@@ -418,31 +415,33 @@ func (conf *Conf) checkRecord(
 	// is too much power.
 	if isVariable(record.Type) {
 		rlog.Error().Msg("record type must not be variable")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 
 	// A calid json int can be out of bounds in DNS
 	if record.TTL < 0 || max31b < record.TTL {
 		rlog.Error().Str("type", record.Type).Int("ttl", int(record.TTL)).Msg("invalid TTL")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	} else if conf.cloudflare && record.TTL == 0 {
 		rlog.Info().Str("type", record.Type).Int("ttl", 0).Msg("Cloudflare will replace zero ttl with value of 300")
+		exitVal |= internal.CheckInfo
 	}
 
 	// Enforce Domain Connect spec
 	if isVariable(record.GroupID) {
 		rlog.Error().Msg("record groupId must not be variable")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 	if isVariable(record.TxtCMP) {
 		rlog.Error().Msg("record txtConflictMatchingPrefix must not be variable")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 
 	// DNS provider specific checks
 	if conf.cloudflare {
 		if record.Essential != "" {
 			rlog.Info().Msg("Cloudflare does not support essential record settings")
+			exitVal |= internal.CheckInfo
 		}
 	}
 	return exitVal
@@ -461,35 +460,35 @@ func isVariable(s string) bool {
 	return strings.Count(s, "%") > 1
 }
 
-func (conf *Conf) cloudflareTemplateChecks(template internal.Template) CheckSeverity {
-	exitVal := CheckOK
+func (conf *Conf) cloudflareTemplateChecks(template internal.Template) internal.CheckSeverity {
+	exitVal := internal.CheckOK
 	if template.SyncBlock {
 		conf.tlog.Error().Msg("Cloudflare does not support syncBlock")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 	if template.SyncPubKeyDomain == "" {
 		conf.tlog.Error().Msg("Cloudflare requires syncPubKeyDomain")
-		exitVal |= CheckError
+		exitVal |= internal.CheckError
 	}
 	if template.SharedServiceName {
 		conf.tlog.Info().Msg("Cloudflare does not support sharedServiceName")
-		exitVal |= CheckWarn
+		exitVal |= internal.CheckInfo
 	}
 	if template.SyncRedirectDomain != "" {
 		conf.tlog.Info().Msg("Cloudflare does not support syncRedirectDomain")
-		exitVal |= CheckWarn
+		exitVal |= internal.CheckInfo
 	}
 	if template.MultiInstance {
 		conf.tlog.Info().Msg("Cloudflare does not support multiInstance")
-		exitVal |= CheckWarn
+		exitVal |= internal.CheckInfo
 	}
 	if template.WarnPhishing {
 		conf.tlog.Info().Msg("Cloudflare does not use warnPhishing because syncPubKeyDomain is required")
-		exitVal |= CheckWarn
+		exitVal |= internal.CheckInfo
 	}
 	if template.HostRequired {
 		conf.tlog.Info().Msg("Cloudflare does not support hostRequired")
-		exitVal |= CheckWarn
+		exitVal |= internal.CheckInfo
 	}
 	return exitVal
 }
