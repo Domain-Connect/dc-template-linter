@@ -97,8 +97,8 @@ func (sint *SINT) UnmarshalJSON(b []byte) error {
 		exitVal = CheckError
 		return err
 	}
-	exitVal = CheckWarn
-	smuggledLog.Warn().Str("value", s).Msg("do not quote an integer, it makes it string")
+	exitVal = CheckInfo
+	smuggledLog.Info().Str("value", s).Msg("do not quote an integer, it makes it string")
 	*sint = SINT(i)
 	return nil
 }
