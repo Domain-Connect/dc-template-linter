@@ -437,6 +437,9 @@ func (conf *Conf) checkRecord(
 			exitVal |= internal.CheckInfo
 		}
 	}
+
+	exitVal |= findInvalidTemplateStrings(record, rlog)
+
 	return exitVal
 }
 
