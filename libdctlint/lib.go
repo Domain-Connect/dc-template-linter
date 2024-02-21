@@ -134,8 +134,8 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) int
 		exitVal |= internal.CheckInfo
 	}
 	if template.Shared && !template.SharedProviderName {
-		conf.tlog.Info().Msg("shared flag is deprecated, use sharedProviderName as well")
-		exitVal |= internal.CheckInfo
+		conf.tlog.Error().Msg("shared flag is deprecated, use sharedProviderName as well")
+		exitVal |= internal.CheckError
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
