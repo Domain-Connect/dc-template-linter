@@ -1,9 +1,9 @@
 package libdctlint
 
 import (
-        "github.com/Domain-Connect/dc-template-linter/internal"
+	"github.com/Domain-Connect/dc-template-linter/internal"
 
-        "github.com/rs/zerolog"
+	"github.com/rs/zerolog"
 )
 
 func findInvalidTemplateStrings(record internal.Record, rlog zerolog.Logger) internal.CheckSeverity {

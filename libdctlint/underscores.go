@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	TypeNS         uint16 = 2
 	TypeCNAME      uint16 = 5
 	TypeNULL       uint16 = 10
 	TypeTXT        uint16 = 16
@@ -22,6 +23,7 @@ const (
 )
 
 var recordToType = map[string]uint16{
+	"NS":         TypeNS,
 	"CNAME":      TypeCNAME,
 	"NULL":       TypeNULL,
 	"TXT":        TypeTXT,
@@ -41,7 +43,7 @@ var rfc8552 = map[string][]uint16{
 	"_dccp":                    {TypeSRV, TypeURI},
 	"_dmarc":                   {TypeTXT},
 	"_dns":                     {TypeSVCB},
-	"_domainkey":               {TypeTXT, TypeCNAME},
+	"_domainkey":               {TypeTXT},
 	"_email":                   {TypeURI},
 	"_ems":                     {TypeURI},
 	"_fax":                     {TypeURI},
@@ -69,8 +71,8 @@ var rfc8552 = map[string][]uint16{
 	"_spf":                     {TypeTXT},
 	"_sztp":                    {TypeTXT},
 	"_ta-*":                    {TypeNULL},
-	"_tcp":                     {TypeSRV, TypeTLSA, TypeTXT, TypeURI},
-	"_udp":                     {TypeSRV, TypeTLSA, TypeTXT, TypeURI},
+	"_tcp":                     {TypeTXT, TypeSRV, TypeTLSA, TypeURI},
+	"_udp":                     {TypeTXT, TypeSRV, TypeTLSA, TypeURI},
 	"_unifmsg":                 {TypeURI},
 	"_validation-contactemail": {TypeTXT},
 	"_validation-contactphone": {TypeTXT},
@@ -106,7 +108,7 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) internal.CheckSeveri
 			continue
 		}
 
-		if !slices.Contains(okTypes, templateType) {
+		if !slices.Contains(append([]uint16{TypeNS, TypeCNAME}, okTypes...), templateType) {
 			rlog.Info().Str("host", elem).Msg("global definition does not have this host and type pair")
 			exitVal |= internal.CheckInfo
 		}
