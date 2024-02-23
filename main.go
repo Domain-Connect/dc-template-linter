@@ -48,7 +48,7 @@ func main() {
 	increment := flag.Bool("increment", false, "increment template version, useful when pretty-printing")
 	prettyPrint := flag.Bool("pretty", false, "pretty-print template json")
 	loglevel := flag.String("loglevel", "info", "loglevel can be one of: panic fatal error warn info debug trace")
-	toleration := flag.String("tolerate", "info", "non-zero return loglevel treshold: any error warn info none")
+	toleration := flag.String("tolerate", "info", "non-zero return loglevel treshold: any error warn info debug none")
 	version := flag.Bool("version", false, "output version information and exit")
 	flag.Parse()
 
@@ -111,6 +111,8 @@ func main() {
 		exitVal &= internal.CheckFatal | internal.CheckError
 	case "info":
 		exitVal &= internal.CheckFatal | internal.CheckError | internal.CheckWarn
+	case "debug":
+		exitVal &= internal.CheckFatal | internal.CheckError | internal.CheckWarn | internal.CheckInfo
 	default:
 		// none
 	}
