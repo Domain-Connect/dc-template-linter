@@ -45,6 +45,7 @@ func main() {
 	checkLogos := flag.Bool("logos", false, "check logo urls are reachable (requires network)")
 	cloudflare := flag.Bool("cloudflare", false, "use Cloudflare specific template rules")
 	inplace := flag.Bool("inplace", false, "inplace write back pretty-print")
+	increment := flag.Bool("increment", false, "increment template version, useful when pretty-printing")
 	prettyPrint := flag.Bool("pretty", false, "pretty-print template json")
 	loglevel := flag.String("loglevel", "info", "loglevel can be one of: panic fatal error warn info debug trace")
 	toleration := flag.String("tolerate", "info", "non-zero return loglevel treshold: any error warn info none")
@@ -66,7 +67,8 @@ func main() {
 		conf := libdctlint.NewConf(
 			*checkLogos,
 			*cloudflare,
-			false,
+			false, // inplace will not work with stdin
+			*increment,
 			*prettyPrint,
 		)
 		if *inplace {
@@ -83,6 +85,7 @@ func main() {
 			*checkLogos,
 			*cloudflare,
 			*inplace,
+			*increment,
 			*prettyPrint,
 		)
 		for _, arg := range flag.Args() {

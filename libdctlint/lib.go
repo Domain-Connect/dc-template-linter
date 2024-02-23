@@ -37,6 +37,7 @@ type Conf struct {
 	checkLogos  bool
 	cloudflare  bool
 	inplace     bool
+	increment   bool
 	prettyPrint bool
 }
 
@@ -55,12 +56,13 @@ type Conf struct {
 // The argument prettyPrint will do the same as inplace, but will output
 // print out to standard out. When both prettyPrint and inplace defined the
 // library will prefer applying inplace.
-func NewConf(checkLogos, cloudflare, inplace, prettyPrint bool) Conf {
+func NewConf(checkLogos, cloudflare, inplace, increment, prettyPrint bool) Conf {
 	return Conf{
 		collision:   make(map[string]bool),
 		checkLogos:  checkLogos,
 		cloudflare:  cloudflare,
 		inplace:     inplace,
+		increment:   increment,
 		prettyPrint: prettyPrint,
 	}
 }
@@ -177,6 +179,9 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) int
 
 	// Pretty printing and/or inplace write output
 	if conf.prettyPrint || conf.inplace {
+		if conf.increment {
+			template.Version++
+		}
 		// Convert to json
 		marshaled, err := json.Marshal(template)
 		if err != nil {
