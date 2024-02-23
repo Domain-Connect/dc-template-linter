@@ -96,8 +96,8 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) internal.CheckSeveri
 		}
 		okTypes, ok := rfc8552[strings.ToLower(elem)]
 		if !ok {
-			rlog.Info().Str("host", elem).Msg("global definition does not define this underscore host")
-			exitVal |= internal.CheckInfo
+			rlog.Debug().Str("host", elem).Msg("global definition does not define this underscore host")
+			exitVal |= internal.CheckDebug
 			continue
 		}
 
