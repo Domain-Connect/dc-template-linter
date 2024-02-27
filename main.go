@@ -13,7 +13,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"time"
 
 	"github.com/Domain-Connect/dc-template-linter/internal"
@@ -23,28 +22,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
-
-var GitCommit = func() string {
-	vcsrevision := "<unknown>"
-	vcsmodified := ""
-	vcstime := "0000-00-00T00:00:00Z"
-
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, setting := range info.Settings {
-			switch setting.Key {
-			case "vcs.revision":
-				vcsrevision = setting.Value
-			case "vcs.modified":
-				if setting.Value == "true" {
-					vcsmodified = " (dirty)"
-				}
-			case "vcs.time":
-				vcstime = setting.Value
-			}
-		}
-	}
-	return vcsrevision + vcsmodified + " " + vcstime
-}()
 
 func main() {
 	// Init logging. Essentially colors or no colors?
@@ -77,7 +54,7 @@ func main() {
 
 	// Did user want to know version
 	if *version {
-		fmt.Printf("dc-template-linter version %s\n", GitCommit)
+		fmt.Printf("dc-template-linter version %d\n", dcTemplateLinterVersion)
 		os.Exit(0)
 	}
 
