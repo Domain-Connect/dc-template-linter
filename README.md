@@ -29,6 +29,8 @@ $GOPATH/bin/dc-template-linter --help
 Usage: dc-template-linter [options] <template.json> [...]
   -cloudflare
 	use Cloudflare specific template rules
+  -increment
+	increment template version, useful when pretty-printing
   -inplace
 	inplace write back pretty-print
   -loglevel string
@@ -37,6 +39,8 @@ Usage: dc-template-linter [options] <template.json> [...]
 	check logo urls are reachable (requires network)
   -pretty
 	pretty-print template json
+  -tolerate string
+	non-zero return loglevel treshold: any error warn info debug none (default "info")
   -version
 	output version information and exit
 Warning. -inplace and -pretty will remove zero priority MX and SRV fields
