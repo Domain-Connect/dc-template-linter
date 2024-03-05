@@ -278,13 +278,12 @@ func (conf *Conf) checkRecord(
 ) internal.CheckSeverity {
 	// A record specific init
 	exitVal := internal.CheckOK
-	rlog := conf.tlog.With().Int("record", rnum).Logger()
-	rlog.Debug().Str("type", record.Type).Str("groupid", record.GroupID).Str("host", record.Host).Msg("check record")
+	rlog := conf.tlog.With().Str("groupid", record.GroupID).Int("record", rnum).Logger()
+	rlog.Debug().Str("type", record.Type).Str("host", record.Host).Msg("check record")
 
 	// Try to catch CNAME usage with other records
 	if t, ok := conflictingTypes[record.GroupID+"/"+record.Host]; ok && (t == strCNAME || record.Type == strCNAME) {
 		rlog.Error().
-			Str("groupid", record.GroupID).
 			Str("host", record.Host).
 			Str("type", record.Type).
 			Str("othertype", t).
