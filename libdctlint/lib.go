@@ -311,6 +311,10 @@ func (conf *Conf) checkRecord(
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
 			exitVal |= internal.CheckError
 		}
+		if record.PointsTo == "" {
+			rlog.Error().Str("type", record.Type).Msg("record pointsTo must not be empty")
+			exitVal |= internal.CheckError
+		}
 
 	case "TXT":
 		if record.Host == "" {
