@@ -1,9 +1,13 @@
 package libdctlint
 
 import (
+	"reflect"
 	"strings"
 
 	"github.com/Domain-Connect/dc-template-linter/internal"
+
+	"github.com/rs/zerolog"
+	"golang.org/x/exp/slices"
 )
 
 const strCNAME = "CNAME"
@@ -48,20 +52,14 @@ func (conf *Conf) checkRecord(
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
 			exitVal |= internal.CheckError
 		}
-		if record.PointsTo == "" {
-			rlog.Error().Str("type", record.Type).Msg("record pointsTo must not be empty")
-			exitVal |= internal.CheckError
-		}
+		exitVal |= targetCheck(record, "pointsTo", rlog)
 
 	case "TXT":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
 			exitVal |= internal.CheckError
 		}
-		if record.Data == "" {
-			rlog.Error().Str("type", record.Type).Msg("record data must not be empty")
-			exitVal |= internal.CheckError
-		}
+		exitVal |= targetCheck(record, "data", rlog)
 		if conf.cloudflare {
 			if record.TxtCMM != "" || record.TxtCMM == "None" {
 				rlog.Info().Msg("Cloudflare does not support txtConflictMatchingMode record settings")
@@ -81,20 +79,14 @@ func (conf *Conf) checkRecord(
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
 			exitVal |= internal.CheckError
 		}
-		if record.PointsTo == "" {
-			rlog.Error().Str("type", record.Type).Msg("record pointsTo must not be empty")
-			exitVal |= internal.CheckError
-		}
+		exitVal |= targetCheck(record, "pointsTo", rlog)
 		if record.Priority < 0 || max31b < record.Priority {
 			rlog.Error().Str("type", record.Type).Int("priority", int(record.Priority)).Msg("invalid priority")
 			exitVal |= internal.CheckError
 		}
 
 	case "SRV":
-		if record.Target == "" {
-			rlog.Error().Str("type", record.Type).Msg("record target must not be empty")
-			exitVal |= internal.CheckError
-		}
+		exitVal |= targetCheck(record, "target", rlog)
 		if isInvalidProtocol(record.Protocol) {
 			rlog.Warn().Str("type", record.Type).Str("protocol", record.Protocol).Msg("invalid protocol")
 			exitVal |= internal.CheckWarn
@@ -196,4 +188,49 @@ func isInvalidProtocol(proto string) bool {
 		return false
 	}
 	return true
+}
+
+var mutuallyExclusive = []string{
+	"data",
+	"name",
+	"pointsTo",
+	"target",
+}
+
+func targetCheck(record internal.Record, requiredField string, rlog zerolog.Logger) internal.CheckSeverity {
+	exitVal := internal.CheckOK
+
+	recordTypes := reflect.TypeOf(record)
+
+	for i := 0; i < recordTypes.NumField(); i++ {
+		field := recordTypes.Field(i)
+
+		jsonTag, ok := field.Tag.Lookup("json")
+		if ok {
+			csv := strings.Split(jsonTag, ",")
+			if csv[0] == "" {
+				rlog.Error().Str("type", record.Type).Msg("json tag not defined")
+				exitVal |= internal.CheckError
+				continue
+			}
+			if csv[0] == requiredField {
+				if reflect.ValueOf(record).FieldByName(field.Name).String() == "" {
+					rlog.Error().Str("field", requiredField).Str("type", record.Type).Msg("required field is missing")
+					exitVal |= internal.CheckError
+				}
+				continue
+			}
+			if record.Type == "SRV" && csv[0] == "name" {
+				continue
+			}
+			if slices.Contains(mutuallyExclusive, csv[0]) {
+				if reflect.ValueOf(record).FieldByName(field.Name).String() != "" {
+					rlog.Info().Str("field", csv[0]).Str("type", record.Type).Msg("unnecessary field found")
+					exitVal |= internal.CheckInfo
+				}
+			}
+		}
+	}
+
+	return exitVal
 }
