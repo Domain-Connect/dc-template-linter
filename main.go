@@ -15,6 +15,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
 	"github.com/Domain-Connect/dc-template-linter/libdctlint"
 
@@ -60,7 +61,7 @@ func main() {
 
 	// Runtime init
 	internal.SetLoglevel(*loglevel)
-	exitVal := internal.CheckOK
+	exitVal := exitvals.CheckOK
 
 	if flag.NArg() < 1 {
 		// No arguments, read from stdin
@@ -93,7 +94,7 @@ func main() {
 			f, err := os.Open(arg)
 			if err != nil {
 				log.Error().Err(err).Msg("cannot open file")
-				exitVal = internal.CheckError
+				exitVal = exitvals.CheckError
 				continue
 			}
 			log.Debug().Str("template", arg).Msg("processing template")
@@ -104,15 +105,15 @@ func main() {
 
 	switch *toleration {
 	case "any":
-		exitVal = internal.CheckOK
+		exitVal = exitvals.CheckOK
 	case "error":
-		exitVal &= internal.CheckFatal
+		exitVal &= exitvals.CheckFatal
 	case "warn":
-		exitVal &= internal.CheckFatal | internal.CheckError
+		exitVal &= exitvals.CheckFatal | exitvals.CheckError
 	case "info":
-		exitVal &= internal.CheckFatal | internal.CheckError | internal.CheckWarn
+		exitVal &= exitvals.CheckFatal | exitvals.CheckError | exitvals.CheckWarn
 	case "debug":
-		exitVal &= internal.CheckFatal | internal.CheckError | internal.CheckWarn | internal.CheckInfo
+		exitVal &= exitvals.CheckFatal | exitvals.CheckError | exitvals.CheckWarn | exitvals.CheckInfo
 	default:
 		// none
 	}

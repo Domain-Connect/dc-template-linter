@@ -1,4 +1,4 @@
-package internal
+package exitvals
 
 // A CheckSeverity represent status of the template check.
 type CheckSeverity uint8

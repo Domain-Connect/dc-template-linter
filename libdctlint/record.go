@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
 
 	"github.com/rs/zerolog"
@@ -17,9 +18,9 @@ func (conf *Conf) checkRecord(
 	rnum int,
 	record internal.Record,
 	conflictingTypes map[string]string,
-) internal.CheckSeverity {
+) exitvals.CheckSeverity {
 	// A record specific init
-	exitVal := internal.CheckOK
+	exitVal := exitvals.CheckOK
 	rlog := conf.tlog.With().Str("groupid", record.GroupID).Int("record", rnum).Logger()
 	rlog.Debug().Str("type", record.Type).Str("host", record.Host).Msg("check record")
 
@@ -30,7 +31,7 @@ func (conf *Conf) checkRecord(
 			Str("type", record.Type).
 			Str("othertype", t).
 			Msg("CNAME cannot be mixed with other record types")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 	conflictingTypes[record.GroupID+"/"+record.Host] = record.Type
 
@@ -40,98 +41,98 @@ func (conf *Conf) checkRecord(
 		if record.Host == "@" {
 			if conf.cloudflare {
 				rlog.Info().Str("type", record.Type).Msg("domains must use Cloudflares CNAME flattening setting")
-				exitVal |= internal.CheckInfo
+				exitVal |= exitvals.CheckInfo
 			} else if !template.HostRequired {
 				rlog.Error().Str("type", record.Type).Msg("record host must not be @ when template hostRequired is false")
-				exitVal |= internal.CheckError
+				exitVal |= exitvals.CheckError
 			}
 		}
 		fallthrough
 	case "A", "AAAA":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "pointsTo", rlog)
 
 	case "TXT":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "data", rlog)
 		if conf.cloudflare {
 			if record.TxtCMM != "" || record.TxtCMM == "None" {
 				rlog.Info().Msg("Cloudflare does not support txtConflictMatchingMode record settings")
-				exitVal |= internal.CheckInfo
+				exitVal |= exitvals.CheckInfo
 			}
 			if record.TxtCMP != "" {
 				rlog.Info().Msg("Cloudflare does not support txtConflictMatchingPrefix record settings")
-				exitVal |= internal.CheckInfo
+				exitVal |= exitvals.CheckInfo
 			}
 		} else if record.TxtCMM == "Prefix" && record.TxtCMP == "" {
 			rlog.Warn().Str("type", record.Type).Msg("record txtConflictMatchingPrefix is not defined")
-			exitVal |= internal.CheckWarn
+			exitVal |= exitvals.CheckWarn
 		}
 
 	case "MX":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "pointsTo", rlog)
 		if record.Priority < 0 || max31b < record.Priority {
 			rlog.Error().Str("type", record.Type).Int("priority", int(record.Priority)).Msg("invalid priority")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 
 	case "SRV":
 		exitVal |= targetCheck(record, "target", rlog)
 		if isInvalidProtocol(record.Protocol) {
 			rlog.Warn().Str("type", record.Type).Str("protocol", record.Protocol).Msg("invalid protocol")
-			exitVal |= internal.CheckWarn
+			exitVal |= exitvals.CheckWarn
 		}
 		if record.Priority < 0 || max31b < record.Priority {
 			rlog.Error().Str("type", record.Type).Int("priority", int(record.Priority)).Msg("invalid priority")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 		if record.Service == "" {
 			rlog.Error().Str("type", record.Type).Msg("record service must not be empty")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 		if record.Weight < 0 || max31b < record.Weight {
 			rlog.Error().Str("type", record.Type).Int("weight", int(record.Weight)).Msg("invalid weight")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 		if record.Port < 1 || max16b < record.Port {
 			rlog.Error().Str("type", record.Type).Int("port", int(record.Port)).Msg("invalid port")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 
 	case "SPFM":
 		if record.Host == "" {
 			rlog.Error().Str("type", record.Type).Msg("record host must not be empty")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 		if record.SPFRules == "" {
 			rlog.Error().Str("type", record.Type).Msg("record spfRules must not be empty")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 
 	case "APEXCNAME":
 		if conf.cloudflare {
 			rlog.Info().Msg("Cloudflare does not support APEXCNAME, use CNAME instead")
-			exitVal |= internal.CheckInfo
+			exitVal |= exitvals.CheckInfo
 		}
 
 	case "REDIR301", "REDIR302":
 		if record.Target == "" {
 			rlog.Error().Str("type", record.Type).Msg("record target must not be empty")
-			exitVal |= internal.CheckError
+			exitVal |= exitvals.CheckError
 		}
 	default:
 		rlog.Info().Str("type", record.Type).Msg("unusual record type check DNS providers if they support it")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 	}
 
 	// Check use of underscore host names.
@@ -146,33 +147,33 @@ func (conf *Conf) checkRecord(
 	// is too much power.
 	if isVariable(record.Type) {
 		rlog.Error().Msg("record type must not be variable")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 
 	// A calid json int can be out of bounds in DNS
 	if record.TTL < 0 || max31b < record.TTL {
 		rlog.Error().Str("type", record.Type).Int("ttl", int(record.TTL)).Msg("invalid TTL")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	} else if conf.cloudflare && record.TTL == 0 {
 		rlog.Info().Str("type", record.Type).Int("ttl", 0).Msg("Cloudflare will replace zero ttl with value of 300")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 	}
 
 	// Enforce Domain Connect spec
 	if isVariable(record.GroupID) {
 		rlog.Error().Msg("record groupId must not be variable")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 	if isVariable(record.TxtCMP) {
 		rlog.Error().Msg("record txtConflictMatchingPrefix must not be variable")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 
 	// DNS provider specific checks
 	if conf.cloudflare {
 		if record.Essential != "" {
 			rlog.Info().Msg("Cloudflare does not support essential record settings")
-			exitVal |= internal.CheckInfo
+			exitVal |= exitvals.CheckInfo
 		}
 	}
 
@@ -197,8 +198,8 @@ var mutuallyExclusive = []string{
 	"target",
 }
 
-func targetCheck(record internal.Record, requiredField string, rlog zerolog.Logger) internal.CheckSeverity {
-	exitVal := internal.CheckOK
+func targetCheck(record internal.Record, requiredField string, rlog zerolog.Logger) exitvals.CheckSeverity {
+	exitVal := exitvals.CheckOK
 
 	recordTypes := reflect.TypeOf(record)
 
@@ -210,13 +211,13 @@ func targetCheck(record internal.Record, requiredField string, rlog zerolog.Logg
 			csv := strings.Split(jsonTag, ",")
 			if csv[0] == "" {
 				rlog.Error().Str("type", record.Type).Msg("json tag not defined")
-				exitVal |= internal.CheckError
+				exitVal |= exitvals.CheckError
 				continue
 			}
 			if csv[0] == requiredField {
 				if reflect.ValueOf(record).FieldByName(field.Name).String() == "" {
 					rlog.Error().Str("field", requiredField).Str("type", record.Type).Msg("required field is missing")
-					exitVal |= internal.CheckError
+					exitVal |= exitvals.CheckError
 				}
 				continue
 			}
@@ -226,7 +227,7 @@ func targetCheck(record internal.Record, requiredField string, rlog zerolog.Logg
 			if slices.Contains(mutuallyExclusive, csv[0]) {
 				if reflect.ValueOf(record).FieldByName(field.Name).String() != "" {
 					rlog.Info().Str("field", csv[0]).Str("type", record.Type).Msg("unnecessary field found")
-					exitVal |= internal.CheckInfo
+					exitVal |= exitvals.CheckInfo
 				}
 			}
 		}

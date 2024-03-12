@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/Domain-Connect/dc-template-linter/exitvals"
+
 	"github.com/rs/zerolog"
 )
 
@@ -59,7 +61,7 @@ type SINT int
 // message via error is not great either - it will stop parsing, which is
 // annoying if early entry in records list is stringy entry but can be
 // recovered while causing warning.
-var exitVal CheckSeverity
+var exitVal exitvals.CheckSeverity
 
 // smuggledLog is similar side channel to exitVal but for json parser extra
 // input rather than output.
@@ -77,27 +79,27 @@ func (sint *SINT) UnmarshalJSON(b []byte) error {
 	if locked {
 		return errors.New("BUG: SetLogger() call was not used")
 	}
-	exitVal = CheckOK
+	exitVal = exitvals.CheckOK
 
 	if b[0] != '"' {
 		err := json.Unmarshal(b, (*int)(sint))
 		if err != nil {
-			exitVal = CheckError
+			exitVal = exitvals.CheckError
 		}
 		return err
 	}
 	var s string
 	err := json.Unmarshal(b, &s)
 	if err != nil {
-		exitVal = CheckError
+		exitVal = exitvals.CheckError
 		return err
 	}
 	i, err := strconv.Atoi(s)
 	if err != nil {
-		exitVal = CheckError
+		exitVal = exitvals.CheckError
 		return err
 	}
-	exitVal = CheckInfo
+	exitVal = exitvals.CheckInfo
 	smuggledLog.Info().Str("value", s).Msg("do not quote an integer, it makes it string")
 	*sint = SINT(i)
 	return nil
@@ -108,7 +110,7 @@ func SetLogger(l zerolog.Logger) {
 	smuggledLog = l
 }
 
-func GetUnmarshalStatus() CheckSeverity {
+func GetUnmarshalStatus() exitvals.CheckSeverity {
 	defer mu.Unlock()
 	return exitVal
 }

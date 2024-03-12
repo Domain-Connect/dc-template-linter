@@ -15,6 +15,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
 
 	"github.com/go-playground/validator/v10"
@@ -69,7 +70,7 @@ func NewConf(checkLogos, cloudflare, inplace, increment, prettyPrint bool) Conf 
 
 // GetAndCheckTemplate is used in dctweb. Do not use applications
 // outside of this project.
-func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, internal.CheckSeverity) {
+func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitvals.CheckSeverity) {
 	conf.tlog = log.With().Str("template", conf.FileName).Logger()
 	internal.SetLogger(conf.tlog)
 	conf.tlog.Debug().Msg("starting template check")
@@ -82,7 +83,7 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, inter
 	exitVal := internal.GetUnmarshalStatus()
 	if err != nil {
 		conf.tlog.Error().Err(err).Msg("json decode error")
-		return template, internal.CheckFatal
+		return template, exitvals.CheckFatal
 	}
 	exitVal |= conf.checkTemplate(f, template)
 	return template, exitVal
@@ -92,22 +93,22 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, inter
 // checks according to the Conf configuration. Please remember to
 // set conf.FileName appropriately before calling this function to avoid
 // confusing results.
-func (conf *Conf) CheckTemplate(f *bufio.Reader) internal.CheckSeverity {
+func (conf *Conf) CheckTemplate(f *bufio.Reader) exitvals.CheckSeverity {
 	// A single template check init
 	_, exitVal := conf.GetAndCheckTemplate(f)
 	return exitVal
 }
 
-func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) internal.CheckSeverity {
-	exitVal := internal.CheckOK
+func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exitvals.CheckSeverity {
+	exitVal := exitvals.CheckOK
 	// Ensure ID fields use valid characters
 	if checkInvalidChars(template.ProviderID) {
 		conf.tlog.Error().Str("providerId", template.ProviderID).Msg("providerId contains invalid characters")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 	if checkInvalidChars(template.ServiceID) {
 		conf.tlog.Error().Str("serviceId", template.ServiceID).Msg("serviceId contains invalid characters")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 
 	// Detect ID collisions _across multiple_ templates
@@ -116,7 +117,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) int
 			Str("providerId", template.ProviderID).
 			Str("serviceId", template.ServiceID).
 			Msg("duplicate provierId + serviceId detected")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 	conf.collision[template.ProviderID+"/"+template.ServiceID] = true
 
@@ -126,25 +127,25 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) int
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
 			conf.tlog.Warn().Err(err).Msg("template field validation")
-			exitVal |= internal.CheckWarn
+			exitVal |= exitvals.CheckWarn
 		}
 	}
 
 	// Field checks provided by this file
 	if template.Version < 0 {
 		conf.tlog.Info().Msg("use of negative version number is not recommended")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 	}
 	if template.Shared && !template.SharedProviderName {
 		conf.tlog.Error().Msg("shared flag is deprecated, use sharedProviderName as well")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
 	}
 	if !template.Shared && template.SharedProviderName {
 		conf.tlog.Info().Msg("sharedProviderName is in use, but shared backward compatibility is not set")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
@@ -152,17 +153,17 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) int
 
 	if isVariable(template.ProviderName) {
 		conf.tlog.Error().Msg("providerName must not be variable")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 	if isVariable(template.ServiceName) {
 		conf.tlog.Error().Msg("serviceName must not be variable")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 
 	// Logo url reachability check
 	if err := conf.isUnreachable(template.Logo); err != nil {
 		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).Msg("logo check failed")
-		exitVal |= internal.CheckWarn
+		exitVal |= exitvals.CheckWarn
 	}
 
 	// DNS provider specific checks
@@ -186,7 +187,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) int
 		marshaled, err := json.Marshal(template)
 		if err != nil {
 			conf.tlog.Error().Err(err).Msg("json marshaling failed")
-			return exitVal | internal.CheckError
+			return exitVal | exitvals.CheckError
 		}
 
 		// Make output pretty
@@ -194,7 +195,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) int
 		err = json.Indent(&out, marshaled, "", "    ")
 		if err != nil {
 			conf.tlog.Error().Err(err).Msg("json indenting failed")
-			return exitVal | internal.CheckError
+			return exitVal | exitvals.CheckError
 		}
 		fmt.Fprintf(&out, "\n")
 
@@ -205,7 +206,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) int
 			_, err = out.WriteTo(os.Stdout)
 			if err != nil {
 				conf.tlog.Error().Err(err).Msg("write failed")
-				exitVal |= internal.CheckError
+				exitVal |= exitvals.CheckError
 			}
 		}
 	}
@@ -240,12 +241,12 @@ func (conf *Conf) isUnreachable(logoURL string) error {
 	return nil
 }
 
-func (conf *Conf) writeBack(out bytes.Buffer) internal.CheckSeverity {
+func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	// Create temporary file
 	outfile, err := os.CreateTemp("./", path.Base(conf.FileName))
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could not create temporary file")
-		return internal.CheckError
+		return exitvals.CheckError
 	}
 	defer outfile.Close()
 
@@ -254,7 +255,7 @@ func (conf *Conf) writeBack(out bytes.Buffer) internal.CheckSeverity {
 	_, err = out.WriteTo(writer)
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could write to temporary file")
-		return internal.CheckError
+		return exitvals.CheckError
 	}
 	writer.Flush()
 
@@ -262,45 +263,45 @@ func (conf *Conf) writeBack(out bytes.Buffer) internal.CheckSeverity {
 	err = os.Rename(outfile.Name(), conf.FileName)
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could not move template back inplace")
-		return internal.CheckWarn
+		return exitvals.CheckWarn
 	}
 	conf.tlog.Debug().Str("tmpfile", outfile.Name()).Msg("updated")
-	return internal.CheckOK
+	return exitvals.CheckOK
 }
 
 func isVariable(s string) bool {
 	return strings.Count(s, "%") > 1
 }
 
-func (conf *Conf) cloudflareTemplateChecks(template internal.Template) internal.CheckSeverity {
-	exitVal := internal.CheckOK
+func (conf *Conf) cloudflareTemplateChecks(template internal.Template) exitvals.CheckSeverity {
+	exitVal := exitvals.CheckOK
 	if template.SyncBlock {
 		conf.tlog.Error().Msg("Cloudflare does not support syncBlock")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 	if template.SyncPubKeyDomain == "" {
 		conf.tlog.Error().Msg("Cloudflare requires syncPubKeyDomain")
-		exitVal |= internal.CheckError
+		exitVal |= exitvals.CheckError
 	}
 	if template.SharedServiceName {
 		conf.tlog.Info().Msg("Cloudflare does not support sharedServiceName")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 	}
 	if template.SyncRedirectDomain != "" {
 		conf.tlog.Info().Msg("Cloudflare does not support syncRedirectDomain")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 	}
 	if template.MultiInstance {
 		conf.tlog.Info().Msg("Cloudflare does not support multiInstance")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 	}
 	if template.WarnPhishing {
 		conf.tlog.Info().Msg("Cloudflare does not use warnPhishing because syncPubKeyDomain is required")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 	}
 	if template.HostRequired {
 		conf.tlog.Info().Msg("Cloudflare does not support hostRequired")
-		exitVal |= internal.CheckInfo
+		exitVal |= exitvals.CheckInfo
 	}
 	return exitVal
 }
