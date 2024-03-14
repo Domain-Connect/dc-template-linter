@@ -118,6 +118,14 @@ func (conf *Conf) checkRecord(
 			rlog.Error().Str("type", record.Type).Msg("record spfRules must not be empty")
 			exitVal |= exitvals.CheckError
 		}
+		if strings.HasPrefix(record.SPFRules, "v=spf1") {
+			rlog.Error().Str("type", record.Type).Msg("spfRules must not include v=spf1")
+			exitVal |= exitvals.CheckError
+		}
+		if strings.HasSuffix(record.SPFRules, "all") {
+			rlog.Error().Str("type", record.Type).Msg("spfRules must not include trailing all rule")
+			exitVal |= exitvals.CheckError
+		}
 
 	case "APEXCNAME":
 		if conf.cloudflare {
