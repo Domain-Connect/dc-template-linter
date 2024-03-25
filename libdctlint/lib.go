@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
@@ -108,6 +109,12 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 	}
 	if checkInvalidChars(template.ServiceID) {
 		conf.tlog.Error().Str("serviceId", template.ServiceID).Msg("serviceId contains invalid characters")
+		exitVal |= exitvals.CheckError
+	}
+
+	// Check 6.11.2. File naming requirements
+	if strings.ToLower(template.ProviderID)+"."+strings.ToLower(template.ServiceID)+".json" != filepath.Base(conf.FileName) {
+		conf.tlog.Error().Str("expected", strings.ToLower(template.ProviderID)+"."+strings.ToLower(template.ServiceID)+".json").Msg("file name does not use required pattern")
 		exitVal |= exitvals.CheckError
 	}
 
