@@ -41,7 +41,7 @@ type Record struct {
 	Host      string `json:"host,omitempty" validate:"min=1,max=255"`
 	Name      string `json:"name,omitempty" validate:"hostname"`
 	PointsTo  string `json:"pointsTo,omitempty" validate:"min=1,max=255"`
-	TTL       SINT   `json:"ttl" validate:"required,min=1"`
+	TTL       SINT   `json:"ttl,omitempty" validate:"required,min=1"`
 	Data      string `json:"data,omitempty" validate:"min=1"`
 	TxtCMM    string `json:"txtConflictMatchingMode,omitempty" validate:"oneof=None All Prefix"`
 	TxtCMP    string `json:"txtConflictMatchingPrefix,omitempty" validate:"min=1"`

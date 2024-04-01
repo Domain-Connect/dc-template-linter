@@ -50,6 +50,7 @@ func main() {
 	prettyPrint := flag.Bool("pretty", false, "pretty-print template json")
 	loglevel := flag.String("loglevel", "info", "loglevel can be one of: panic fatal error warn info debug trace")
 	toleration := flag.String("tolerate", "info", "non-zero return loglevel treshold: any error warn info debug none")
+	ttl := flag.Uint("ttl", 0, "-inplace ttl fix value to be used when template ttl is zero or invalid")
 	version := flag.Bool("version", false, "output version information and exit")
 	flag.Parse()
 
@@ -63,6 +64,10 @@ func main() {
 	internal.SetLoglevel(*loglevel)
 	exitVal := exitvals.CheckOK
 
+	if libdctlint.MaxTTL < *ttl {
+		log.Fatal().Uint("ttl", *ttl).Uint("max", libdctlint.MaxTTL).Msg("ttl value exceeds maximum")
+	}
+
 	if flag.NArg() < 1 {
 		// No arguments, read from stdin
 		conf := libdctlint.NewConf(
@@ -71,6 +76,7 @@ func main() {
 			false, // inplace will not work with stdin
 			*increment,
 			*prettyPrint,
+			*ttl,
 		)
 		if *inplace {
 			log.Warn().Msg("disabling -inplace")
@@ -88,6 +94,7 @@ func main() {
 			*inplace,
 			*increment,
 			*prettyPrint,
+			*ttl,
 		)
 		for _, arg := range flag.Args() {
 			conf.FileName = arg

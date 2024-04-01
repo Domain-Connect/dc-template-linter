@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func findInvalidTemplateStrings(record internal.Record, rlog zerolog.Logger) exitvals.CheckSeverity {
+func findInvalidTemplateStrings(record *internal.Record, rlog zerolog.Logger) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 
 	exitVal |= checkSingleString(record.Host, rlog)

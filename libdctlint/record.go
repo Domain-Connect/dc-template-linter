@@ -13,11 +13,12 @@ import (
 )
 
 const strCNAME = "CNAME"
+const MaxTTL = (1 << 31) - 1 // 2147483647
 
 func (conf *Conf) checkRecord(
 	template internal.Template,
 	rnum int,
-	record internal.Record,
+	record *internal.Record,
 	conflictingTypes map[string]string,
 ) exitvals.CheckSeverity {
 	// A record specific init
@@ -148,12 +149,18 @@ func (conf *Conf) checkRecord(
 	}
 
 	// A calid json int can be out of bounds in DNS
-	if record.TTL < 0 || max31b < record.TTL {
+	invalidTTL := false
+	if record.TTL < 0 || MaxTTL < record.TTL {
 		rlog.Error().Int("ttl", int(record.TTL)).Msg("invalid TTL")
 		exitVal |= exitvals.CheckError
+		invalidTTL = true
 	} else if conf.cloudflare && record.TTL == 0 {
 		rlog.Info().Int("ttl", 0).Msg("Cloudflare will replace zero ttl with value of 300")
 		exitVal |= exitvals.CheckInfo
+	}
+	if invalidTTL || record.TTL == 0 && conf.inplace && 0 < conf.ttl && requiresTTL(record.Type) {
+		rlog.Info().Uint("ttl", conf.ttl).Msg("adding ttl to the record")
+		record.TTL = internal.SINT(conf.ttl)
 	}
 
 	// Enforce Domain Connect spec
@@ -188,6 +195,14 @@ func isInvalidProtocol(proto string) bool {
 	return true
 }
 
+func requiresTTL(recordType string) bool {
+	switch recordType {
+	case strCNAME, "NS", "A", "AAAA", "TXT", "MX", "SRV":
+		return true
+	}
+	return false
+}
+
 var mutuallyExclusive = []string{
 	"data",
 	"name",
@@ -195,10 +210,10 @@ var mutuallyExclusive = []string{
 	"target",
 }
 
-func targetCheck(record internal.Record, requiredField string, rlog zerolog.Logger) exitvals.CheckSeverity {
+func targetCheck(record *internal.Record, requiredField string, rlog zerolog.Logger) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 
-	recordTypes := reflect.TypeOf(record)
+	recordTypes := reflect.TypeOf(*record)
 
 	for i := 0; i < recordTypes.NumField(); i++ {
 		field := recordTypes.Field(i)
@@ -212,7 +227,7 @@ func targetCheck(record internal.Record, requiredField string, rlog zerolog.Logg
 				continue
 			}
 			if csv[0] == requiredField {
-				if reflect.ValueOf(record).FieldByName(field.Name).String() == "" {
+				if reflect.ValueOf(*record).FieldByName(field.Name).String() == "" {
 					rlog.Error().Str("field", requiredField).Msg("required field is missing")
 					exitVal |= exitvals.CheckError
 				}
@@ -222,7 +237,7 @@ func targetCheck(record internal.Record, requiredField string, rlog zerolog.Logg
 				continue
 			}
 			if slices.Contains(mutuallyExclusive, csv[0]) {
-				if reflect.ValueOf(record).FieldByName(field.Name).String() != "" {
+				if reflect.ValueOf(*record).FieldByName(field.Name).String() != "" {
 					rlog.Info().Str("field", csv[0]).Msg("unnecessary field found")
 					exitVal |= exitvals.CheckInfo
 				}

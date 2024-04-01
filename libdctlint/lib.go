@@ -41,6 +41,7 @@ type Conf struct {
 	inplace     bool
 	increment   bool
 	prettyPrint bool
+	ttl         uint
 }
 
 // NewConf will create template check configuration.
@@ -58,7 +59,7 @@ type Conf struct {
 // The argument prettyPrint will do the same as inplace, but will output
 // print out to standard out. When both prettyPrint and inplace defined the
 // library will prefer applying inplace.
-func NewConf(checkLogos, cloudflare, inplace, increment, prettyPrint bool) Conf {
+func NewConf(checkLogos, cloudflare, inplace, increment, prettyPrint bool, ttl uint) Conf {
 	return Conf{
 		collision:   make(map[string]bool),
 		checkLogos:  checkLogos,
@@ -66,6 +67,7 @@ func NewConf(checkLogos, cloudflare, inplace, increment, prettyPrint bool) Conf 
 		inplace:     inplace,
 		increment:   increment,
 		prettyPrint: prettyPrint,
+		ttl:         ttl,
 	}
 }
 
@@ -182,7 +184,8 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 	// Template records checks
 	conflictingTypes := make(map[string]string)
 	for rnum, record := range template.Records {
-		exitVal |= conf.checkRecord(template, rnum, record, conflictingTypes)
+		exitVal |= conf.checkRecord(template, rnum, &record, conflictingTypes)
+		template.Records[rnum] = record
 	}
 
 	// Pretty printing and/or inplace write output
