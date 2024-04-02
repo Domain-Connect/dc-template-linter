@@ -72,9 +72,12 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 	}
 
 	// Check 6.11.2. File naming requirements
-	if strings.ToLower(template.ProviderID)+"."+strings.ToLower(template.ServiceID)+".json" != filepath.Base(conf.fileName) {
-		conf.tlog.Error().Str("expected", strings.ToLower(template.ProviderID)+"."+strings.ToLower(template.ServiceID)+".json").Msg("file name does not use required pattern")
-		exitVal |= exitvals.CheckError
+	if conf.fileName != "/dev/stdin" {
+		expected := strings.ToLower(template.ProviderID) + "." + strings.ToLower(template.ServiceID) + ".json"
+		if filepath.Base(conf.fileName) != expected {
+			conf.tlog.Error().Str("expected", expected).Msg("file name does not use required pattern")
+			exitVal |= exitvals.CheckError
+		}
 	}
 
 	// Detect ID collisions _across multiple_ templates
