@@ -68,36 +68,23 @@ func main() {
 		log.Fatal().Uint("ttl", *ttl).Uint("max", libdctlint.MaxTTL).Msg("ttl value exceeds maximum")
 	}
 
+	conf := libdctlint.NewConf().
+		SetCheckLogos(*checkLogos).
+		SetPrettyPrint(*prettyPrint).
+		SetCloudflare(*cloudflare)
+
 	if flag.NArg() < 1 {
-		// No arguments, read from stdin
-		conf := libdctlint.NewConf(
-			*checkLogos,
-			*cloudflare,
-			false, // inplace will not work with stdin
-			*increment,
-			*prettyPrint,
-			*ttl,
-		)
-		if *inplace {
-			log.Warn().Msg("disabling -inplace")
-		}
 		log.Debug().Msg("reading from stdin")
-		conf.FileName = "/dev/stdin"
+		conf.SetFilename("/dev/stdin")
 		reader := bufio.NewReader(os.Stdin)
 		exitVal = conf.CheckTemplate(reader)
 	} else {
-		// Each argument is expected to be a template file,
-		// loop over them.
-		conf := libdctlint.NewConf(
-			*checkLogos,
-			*cloudflare,
-			*inplace,
-			*increment,
-			*prettyPrint,
-			*ttl,
-		)
+		conf.SetInplace(*inplace).
+			SetTTL(*ttl).
+			SetIncrement(*increment)
+
 		for _, arg := range flag.Args() {
-			conf.FileName = arg
+			conf.SetFilename(arg)
 			f, err := os.Open(arg)
 			if err != nil {
 				log.Error().Err(err).Msg("cannot open file")

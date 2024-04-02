@@ -20,7 +20,6 @@ import (
 	"github.com/Domain-Connect/dc-template-linter/internal"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,52 +28,10 @@ const (
 	max31b = 1<<31 - 1
 )
 
-// Conf holds template checking instructions. The field type FileName must
-// be updated each time CheckTemplate() is called to match with the
-// bufio.Reader argument.
-type Conf struct {
-	FileName    string
-	tlog        zerolog.Logger
-	collision   map[string]bool
-	checkLogos  bool
-	cloudflare  bool
-	inplace     bool
-	increment   bool
-	prettyPrint bool
-	ttl         uint
-}
-
-// NewConf will create template check configuration.
-//
-// The argument checkLogos will test if a logoUrl in template is reachable,
-// this requires network access can slow down the check.
-//
-// The argument cloudflare will enable Cloudflare specific tests.
-//
-// The argument inplace will write back the file with some automatic issue
-// corrections, re-indent, and uniform order of the struct fields. When
-// CheckTemplate() bufio.Reader is stdin or some other non-writable io
-// stream it is best to hardcode inplace false.
-//
-// The argument prettyPrint will do the same as inplace, but will output
-// print out to standard out. When both prettyPrint and inplace defined the
-// library will prefer applying inplace.
-func NewConf(checkLogos, cloudflare, inplace, increment, prettyPrint bool, ttl uint) Conf {
-	return Conf{
-		collision:   make(map[string]bool),
-		checkLogos:  checkLogos,
-		cloudflare:  cloudflare,
-		inplace:     inplace,
-		increment:   increment,
-		prettyPrint: prettyPrint,
-		ttl:         ttl,
-	}
-}
-
 // GetAndCheckTemplate is used in dctweb. Do not use applications
 // outside of this project.
 func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitvals.CheckSeverity) {
-	conf.tlog = log.With().Str("template", conf.FileName).Logger()
+	conf.SetLogger(log.With().Str("template", conf.fileName).Logger())
 	internal.SetLogger(conf.tlog)
 	conf.tlog.Debug().Msg("starting template check")
 
@@ -94,7 +51,7 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitv
 
 // CheckTemplate takes bufio.Reader as an argument and will run template
 // checks according to the Conf configuration. Please remember to
-// set conf.FileName appropriately before calling this function to avoid
+// set conf.fileName appropriately before calling this function to avoid
 // confusing results.
 func (conf *Conf) CheckTemplate(f *bufio.Reader) exitvals.CheckSeverity {
 	// A single template check init
@@ -115,7 +72,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 	}
 
 	// Check 6.11.2. File naming requirements
-	if strings.ToLower(template.ProviderID)+"."+strings.ToLower(template.ServiceID)+".json" != filepath.Base(conf.FileName) {
+	if strings.ToLower(template.ProviderID)+"."+strings.ToLower(template.ServiceID)+".json" != filepath.Base(conf.fileName) {
 		conf.tlog.Error().Str("expected", strings.ToLower(template.ProviderID)+"."+strings.ToLower(template.ServiceID)+".json").Msg("file name does not use required pattern")
 		exitVal |= exitvals.CheckError
 	}
@@ -253,7 +210,7 @@ func (conf *Conf) isUnreachable(logoURL string) error {
 
 func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	// Create temporary file
-	outfile, err := os.CreateTemp("./", path.Base(conf.FileName))
+	outfile, err := os.CreateTemp("./", path.Base(conf.fileName))
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could not create temporary file")
 		return exitvals.CheckError
@@ -270,7 +227,7 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	writer.Flush()
 
 	// Move temporary file where the original file is
-	err = os.Rename(outfile.Name(), conf.FileName)
+	err = os.Rename(outfile.Name(), conf.fileName)
 	if err != nil {
 		conf.tlog.Warn().Err(err).Msg("could not move template back inplace")
 		return exitvals.CheckWarn
