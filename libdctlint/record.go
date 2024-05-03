@@ -75,6 +75,10 @@ func (conf *Conf) checkRecord(
 			rlog.Warn().Msg("record txtConflictMatchingPrefix is not defined")
 			exitVal |= exitvals.CheckWarn
 		}
+		if strings.HasPrefix(record.Data, "v=spf1") {
+			rlog.Info().Msg("It is recommended to use SPFM instead of bare SPF record to allow for merging several services. See specification section 6.10 for details.")
+			exitVal |= exitvals.CheckInfo
+		}
 
 	case "MX":
 		if record.Host == "" {
