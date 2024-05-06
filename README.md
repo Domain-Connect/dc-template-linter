@@ -41,7 +41,11 @@ Usage: dc-template-linter [options] <template.json> [...]
 	pretty-print template json
   -tolerate string
 	non-zero return loglevel treshold: any error warn info debug none (default "info")
+  -ttl uint
+	-inplace ttl fix value to be used when template ttl is zero or invalid
   -version
 	output version information and exit
 Warning. -inplace and -pretty will remove zero priority MX and SRV fields
+You can find long DCTL explanations in wiki
+e.g., https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1001
 ```

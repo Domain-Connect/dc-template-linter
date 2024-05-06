@@ -8,7 +8,7 @@ import (
 func SetLoglevel(loglevel string) {
 	level, err := zerolog.ParseLevel(loglevel)
 	if err != nil {
-		log.Fatal().Err(err).Msg("invalid loglevel")
+		log.Fatal().Err(err).EmbedObject(DCTL0002).Msg("")
 	}
 	zerolog.SetGlobalLevel(level)
 }

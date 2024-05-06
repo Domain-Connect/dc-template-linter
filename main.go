@@ -42,6 +42,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <template.json> [...]\n", os.Args[0])
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "Warning. -inplace and -pretty will remove zero priority MX and SRV fields\n")
+		fmt.Fprintf(os.Stderr, "You can find long DCTL explanations in wiki\n")
+		fmt.Fprintf(os.Stderr, "e.g., https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1001\n")
 	}
 	checkLogos := flag.Bool("logos", false, "check logo urls are reachable (requires network)")
 	cloudflare := flag.Bool("cloudflare", false, "use Cloudflare specific template rules")
@@ -65,7 +67,7 @@ func main() {
 	exitVal := exitvals.CheckOK
 
 	if libdctlint.MaxTTL < *ttl {
-		log.Fatal().Uint("ttl", *ttl).Uint("max", libdctlint.MaxTTL).Msg("ttl value exceeds maximum")
+		log.Fatal().Uint("ttl", *ttl).Uint("max", libdctlint.MaxTTL).EmbedObject(internal.DCTL1000).Msg("")
 	}
 
 	conf := libdctlint.NewConf().
@@ -87,7 +89,7 @@ func main() {
 			conf.SetFilename(arg)
 			f, err := os.Open(arg)
 			if err != nil {
-				log.Error().Err(err).Msg("cannot open file")
+				log.Error().Err(err).EmbedObject(internal.DCTL0001).Msg("")
 				exitVal = exitvals.CheckError
 				continue
 			}

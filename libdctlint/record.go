@@ -31,7 +31,7 @@ func (conf *Conf) checkRecord(
 		rlog.Error().
 			Str("host", record.Host).
 			Str("othertype", t).
-			Msg("CNAME cannot be mixed with other record types")
+			EmbedObject(internal.DCTL1011).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	conflictingTypes[record.GroupID+"/"+record.Host] = record.Type
@@ -41,99 +41,99 @@ func (conf *Conf) checkRecord(
 	case strCNAME, "NS":
 		if record.Host == "@" {
 			if conf.cloudflare {
-				rlog.Info().Msg("domains must use Cloudflares CNAME flattening setting")
+				rlog.Info().EmbedObject(internal.DCTL5007).Msg("")
 				exitVal |= exitvals.CheckInfo
 			} else if !template.HostRequired {
-				rlog.Error().Msg("record host must not be @ when template hostRequired is false")
+				rlog.Error().EmbedObject(internal.DCTL1012).Msg("")
 				exitVal |= exitvals.CheckError
 			}
 		}
 		fallthrough
 	case "A", "AAAA":
 		if record.Host == "" {
-			rlog.Error().Msg("record host must not be empty")
+			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "pointsTo", rlog)
 
 	case "TXT":
 		if record.Host == "" {
-			rlog.Error().Msg("record host must not be empty")
+			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "data", rlog)
 		if conf.cloudflare {
 			if record.TxtCMM != "" || record.TxtCMM == "None" {
-				rlog.Info().Msg("Cloudflare does not support txtConflictMatchingMode record settings")
+				rlog.Info().Str("key", "txtConflictMatchingMode").EmbedObject(internal.DCTL5008).Msg("")
 				exitVal |= exitvals.CheckInfo
 			}
 			if record.TxtCMP != "" {
-				rlog.Info().Msg("Cloudflare does not support txtConflictMatchingPrefix record settings")
+				rlog.Info().Str("key", "txtConflictMatchingPrefix").EmbedObject(internal.DCTL5008).Msg("")
 				exitVal |= exitvals.CheckInfo
 			}
 		} else if record.TxtCMM == "Prefix" && record.TxtCMP == "" {
-			rlog.Warn().Msg("record txtConflictMatchingPrefix is not defined")
+			rlog.Warn().Str("key", "txtConflictMatchingPrefix").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckWarn
 		}
 		if strings.HasPrefix(record.Data, "v=spf1") {
-			rlog.Info().Msg("It is recommended to use SPFM instead of bare SPF record to allow for merging several services. See specification section 6.10 for details.")
+			rlog.Info().EmbedObject(internal.DCTL1014).Msg("")
 			exitVal |= exitvals.CheckInfo
 		}
 
 	case "MX":
 		if record.Host == "" {
-			rlog.Error().Msg("record host must not be empty")
+			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "pointsTo", rlog)
 		if record.Priority < 0 || max31b < record.Priority {
-			rlog.Error().Int("priority", int(record.Priority)).Msg("invalid priority")
+			rlog.Error().Int("priority", int(record.Priority)).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 
 	case "SRV":
 		exitVal |= targetCheck(record, "target", rlog)
 		if isInvalidProtocol(record.Protocol) {
-			rlog.Warn().Str("protocol", record.Protocol).Msg("invalid protocol")
+			rlog.Warn().Str("protocol", record.Protocol).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckWarn
 		}
 		if record.Priority < 0 || max31b < record.Priority {
-			rlog.Error().Int("priority", int(record.Priority)).Msg("invalid priority")
+			rlog.Error().Int("priority", int(record.Priority)).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		if record.Service == "" {
-			rlog.Error().Msg("record service must not be empty")
+			rlog.Error().Str("key", "service").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		if record.Weight < 0 || max31b < record.Weight {
-			rlog.Error().Int("weight", int(record.Weight)).Msg("invalid weight")
+			rlog.Error().Int("weight", int(record.Weight)).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		if record.Port < 1 || max16b < record.Port {
-			rlog.Error().Int("port", int(record.Port)).Msg("invalid port")
+			rlog.Error().Int("port", int(record.Port)).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 
 	case "SPFM":
 		if record.Host == "" {
-			rlog.Error().Msg("record host must not be empty")
+			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		exitVal |= checkSPFRules(strings.ToLower(record.SPFRules), rlog)
 
 	case "APEXCNAME":
 		if conf.cloudflare {
-			rlog.Info().Msg("Cloudflare does not support APEXCNAME, use CNAME instead")
+			rlog.Info().EmbedObject(internal.DCTL5009).Msg("")
 			exitVal |= exitvals.CheckInfo
 		}
 
 	case "REDIR301", "REDIR302":
 		if record.Target == "" {
-			rlog.Error().Msg("record target must not be empty")
+			rlog.Error().Str("key", "target").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 	default:
-		rlog.Info().Msg("unusual record type check DNS providers if they support it")
+		rlog.Info().EmbedObject(internal.DCTL1016).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
 
@@ -148,18 +148,18 @@ func (conf *Conf) checkRecord(
 	// DNS content. Domain Connect is expected to be powerful, but that
 	// is too much power.
 	if isVariable(record.Type) {
-		rlog.Error().Msg("record type must not be variable")
+		rlog.Error().Str("type", record.Type).EmbedObject(internal.DCTL1009).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 
 	// A calid json int can be out of bounds in DNS
 	invalidTTL := false
 	if record.TTL < 0 || MaxTTL < record.TTL {
-		rlog.Error().Int("ttl", int(record.TTL)).Msg("invalid TTL")
+		rlog.Error().Int("ttl", int(record.TTL)).EmbedObject(internal.DCTL1015).Msg("")
 		exitVal |= exitvals.CheckError
 		invalidTTL = true
 	} else if conf.cloudflare && record.TTL == 0 {
-		rlog.Info().Int("ttl", 0).Msg("Cloudflare will replace zero ttl with value of 300")
+		rlog.Info().EmbedObject(internal.DCTL5010).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
 	if invalidTTL || record.TTL == 0 && conf.inplace && 0 < conf.ttl && requiresTTL(record.Type) {
@@ -169,18 +169,18 @@ func (conf *Conf) checkRecord(
 
 	// Enforce Domain Connect spec
 	if isVariable(record.GroupID) {
-		rlog.Error().Msg("record groupId must not be variable")
+		rlog.Error().Str("groupId", record.GroupID).EmbedObject(internal.DCTL1009).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	if isVariable(record.TxtCMP) {
-		rlog.Error().Msg("record txtConflictMatchingPrefix must not be variable")
+		rlog.Error().Str("txtConflictMatchingPrefix", record.TxtCMP).EmbedObject(internal.DCTL1009).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 
 	// DNS provider specific checks
 	if conf.cloudflare {
 		if record.Essential != "" {
-			rlog.Info().Msg("Cloudflare does not support essential record settings")
+			rlog.Info().EmbedObject(internal.DCTL5011).Msg("")
 			exitVal |= exitvals.CheckInfo
 		}
 	}
@@ -226,13 +226,13 @@ func targetCheck(record *internal.Record, requiredField string, rlog zerolog.Log
 		if ok {
 			csv := strings.Split(jsonTag, ",")
 			if csv[0] == "" {
-				rlog.Error().Msg("json tag not defined")
+				rlog.Error().EmbedObject(internal.DCTL0007).Msg("")
 				exitVal |= exitvals.CheckError
 				continue
 			}
 			if csv[0] == requiredField {
 				if reflect.ValueOf(*record).FieldByName(field.Name).String() == "" {
-					rlog.Error().Str("field", requiredField).Msg("required field is missing")
+					rlog.Error().Str("field", requiredField).EmbedObject(internal.DCTL0008).Msg("")
 					exitVal |= exitvals.CheckError
 				}
 				continue
@@ -242,7 +242,7 @@ func targetCheck(record *internal.Record, requiredField string, rlog zerolog.Log
 			}
 			if slices.Contains(mutuallyExclusive, csv[0]) {
 				if reflect.ValueOf(*record).FieldByName(field.Name).String() != "" {
-					rlog.Info().Str("field", csv[0]).Msg("unnecessary field found")
+					rlog.Info().Str("field", csv[0]).EmbedObject(internal.DCTL0009).Msg("")
 					exitVal |= exitvals.CheckInfo
 				}
 			}
@@ -263,15 +263,15 @@ func checkSPFRules(rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 
 	if rules == "" {
-		rlog.Error().Msg("record spfRules must not be empty")
+		rlog.Error().Str("data", "record data is empty string").EmbedObject(internal.DCTL1013).Msg("")
 		return exitvals.CheckError
 	}
 	if strings.HasPrefix(rules, "v=spf1") {
-		rlog.Error().Msg("spfRules must not include v=spf1")
+		rlog.Error().Str("data", "v=spf1").EmbedObject(internal.DCTL1017).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	if strings.HasSuffix(rules, "all") {
-		rlog.Error().Msg("spfRules must not include trailing all rule")
+		rlog.Error().Str("data", "all").EmbedObject(internal.DCTL1017).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 
@@ -289,18 +289,18 @@ func checkSPFRules(rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
 			switch matches[1] {
 			case "redirect":
 				if track.redirect {
-					rlog.Error().Msg("spfRules has multiple redirect fields")
+					rlog.Error().Str("field", "redirect").EmbedObject(internal.DCTL1018).Msg("")
 					exitVal |= exitvals.CheckError
 				}
 				track.redirect = true
 			case "exp":
 				if track.exp {
-					rlog.Error().Msg("spfRules has multiple exp fields")
+					rlog.Error().Str("field", "exp").EmbedObject(internal.DCTL1018).Msg("")
 					exitVal |= exitvals.CheckError
 				}
 				track.exp = true
 			default:
-				rlog.Error().Str("field", matches[1]).Msg("spfRules contains unknown macro field")
+				rlog.Error().Str("data", matches[1]).EmbedObject(internal.DCTL1017).Msg("")
 				exitVal |= exitvals.CheckError
 			}
 			continue
@@ -326,7 +326,7 @@ func checkSPFRules(rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
 		case "include", "a", "mx", "ptr", "ip4", "ip6", "exists":
 			// these are ok
 		default:
-			rlog.Error().Str("modifier", field).Msg("spfRules contains unknown modifier")
+			rlog.Error().Str("modifier", field).EmbedObject(internal.DCTL1017).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 	}

@@ -42,7 +42,7 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitv
 	err := decoder.Decode(&template)
 	exitVal := internal.GetUnmarshalStatus()
 	if err != nil {
-		conf.tlog.Error().Err(err).Msg("json decode error")
+		conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 		return template, exitvals.CheckFatal
 	}
 	exitVal |= conf.checkTemplate(f, template)
@@ -63,11 +63,11 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 	exitVal := exitvals.CheckOK
 	// Ensure ID fields use valid characters
 	if checkInvalidChars(template.ProviderID) {
-		conf.tlog.Error().Str("providerId", template.ProviderID).Msg("providerId contains invalid characters")
+		conf.tlog.Error().Str("providerId", template.ProviderID).EmbedObject(internal.DCTL1002).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	if checkInvalidChars(template.ServiceID) {
-		conf.tlog.Error().Str("serviceId", template.ServiceID).Msg("serviceId contains invalid characters")
+		conf.tlog.Error().Str("serviceId", template.ServiceID).EmbedObject(internal.DCTL1002).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 
@@ -75,7 +75,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 	if conf.fileName != "/dev/stdin" {
 		expected := strings.ToLower(template.ProviderID) + "." + strings.ToLower(template.ServiceID) + ".json"
 		if filepath.Base(conf.fileName) != expected {
-			conf.tlog.Error().Str("expected", expected).Msg("file name does not use required pattern")
+			conf.tlog.Error().Str("expected", expected).EmbedObject(internal.DCTL1003).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 	}
@@ -85,7 +85,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 		conf.tlog.Error().
 			Str("providerId", template.ProviderID).
 			Str("serviceId", template.ServiceID).
-			Msg("duplicate provierId + serviceId detected")
+			EmbedObject(internal.DCTL1004).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	conf.collision[template.ProviderID+"/"+template.ServiceID] = true
@@ -95,25 +95,25 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 	err := Validator.Struct(template)
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
-			conf.tlog.Warn().Err(err).Msg("template field validation")
+			conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL1005).Msg("")
 			exitVal |= exitvals.CheckWarn
 		}
 	}
 
 	// Field checks provided by this file
 	if template.Version < 0 {
-		conf.tlog.Info().Msg("use of negative version number is not recommended")
+		conf.tlog.Info().EmbedObject(internal.DCTL1006).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
 	if template.Shared && !template.SharedProviderName {
-		conf.tlog.Error().Msg("shared flag is deprecated, use sharedProviderName as well")
+		conf.tlog.Error().EmbedObject(internal.DCTL1007).Msg("")
 		exitVal |= exitvals.CheckError
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
 	}
 	if !template.Shared && template.SharedProviderName {
-		conf.tlog.Info().Msg("sharedProviderName is in use, but shared backward compatibility is not set")
+		conf.tlog.Info().EmbedObject(internal.DCTL1008).Msg("")
 		exitVal |= exitvals.CheckInfo
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
@@ -121,17 +121,17 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 	}
 
 	if isVariable(template.ProviderName) {
-		conf.tlog.Error().Msg("providerName must not be variable")
+		conf.tlog.Error().Str("providerName", template.ProviderName).EmbedObject(internal.DCTL1009).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	if isVariable(template.ServiceName) {
-		conf.tlog.Error().Msg("serviceName must not be variable")
+		conf.tlog.Error().Str("serviceName", template.ServiceName).EmbedObject(internal.DCTL1009).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 
 	// Logo url reachability check
 	if err := conf.isUnreachable(template.Logo); err != nil {
-		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).Msg("logo check failed")
+		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).EmbedObject(internal.DCTL1010).Msg("")
 		exitVal |= exitvals.CheckWarn
 	}
 
@@ -156,7 +156,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 		// Convert to json
 		marshaled, err := json.Marshal(template)
 		if err != nil {
-			conf.tlog.Error().Err(err).Msg("json marshaling failed")
+			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 			return exitVal | exitvals.CheckError
 		}
 
@@ -164,7 +164,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 		var out bytes.Buffer
 		err = json.Indent(&out, marshaled, "", "    ")
 		if err != nil {
-			conf.tlog.Error().Err(err).Msg("json indenting failed")
+			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 			return exitVal | exitvals.CheckError
 		}
 		fmt.Fprintf(&out, "\n")
@@ -175,7 +175,7 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 		} else {
 			_, err = out.WriteTo(os.Stdout)
 			if err != nil {
-				conf.tlog.Error().Err(err).Msg("write failed")
+				conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0004).Msg("")
 				exitVal |= exitvals.CheckError
 			}
 		}
@@ -215,7 +215,7 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	// Create temporary file
 	outfile, err := os.CreateTemp("./", path.Base(conf.fileName))
 	if err != nil {
-		conf.tlog.Warn().Err(err).Msg("could not create temporary file")
+		conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL0005).Msg("")
 		return exitvals.CheckError
 	}
 	defer outfile.Close()
@@ -224,7 +224,7 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	writer := bufio.NewWriter(outfile)
 	_, err = out.WriteTo(writer)
 	if err != nil {
-		conf.tlog.Warn().Err(err).Msg("could write to temporary file")
+		conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL0004).Msg("")
 		return exitvals.CheckError
 	}
 	writer.Flush()
@@ -232,7 +232,7 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	// Move temporary file where the original file is
 	err = os.Rename(outfile.Name(), conf.fileName)
 	if err != nil {
-		conf.tlog.Warn().Err(err).Msg("could not move template back inplace")
+		conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL0006).Msg("")
 		return exitvals.CheckWarn
 	}
 	conf.tlog.Debug().Str("tmpfile", outfile.Name()).Msg("updated")
@@ -246,31 +246,31 @@ func isVariable(s string) bool {
 func (conf *Conf) cloudflareTemplateChecks(template internal.Template) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 	if template.SyncBlock {
-		conf.tlog.Error().Msg("Cloudflare does not support syncBlock")
+		conf.tlog.Error().EmbedObject(internal.DCTL5000).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	if template.SyncPubKeyDomain == "" {
-		conf.tlog.Error().Msg("Cloudflare requires syncPubKeyDomain")
+		conf.tlog.Error().EmbedObject(internal.DCTL5001).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	if template.SharedServiceName {
-		conf.tlog.Info().Msg("Cloudflare does not support sharedServiceName")
+		conf.tlog.Info().EmbedObject(internal.DCTL5002).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
 	if template.SyncRedirectDomain != "" {
-		conf.tlog.Info().Msg("Cloudflare does not support syncRedirectDomain")
+		conf.tlog.Info().EmbedObject(internal.DCTL5003).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
 	if template.MultiInstance {
-		conf.tlog.Info().Msg("Cloudflare does not support multiInstance")
+		conf.tlog.Info().EmbedObject(internal.DCTL5004).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
 	if template.WarnPhishing {
-		conf.tlog.Info().Msg("Cloudflare does not use warnPhishing because syncPubKeyDomain is required")
+		conf.tlog.Info().EmbedObject(internal.DCTL5005).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
 	if template.HostRequired {
-		conf.tlog.Info().Msg("Cloudflare does not support hostRequired")
+		conf.tlog.Info().EmbedObject(internal.DCTL5006).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
 	return exitVal

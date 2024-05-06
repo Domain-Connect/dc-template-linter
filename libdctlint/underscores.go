@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
+	"github.com/Domain-Connect/dc-template-linter/internal"
 
 	"golang.org/x/exp/slices"
 )
@@ -87,7 +88,7 @@ var rfc8552 = map[string][]uint16{
 }
 
 func (conf *Conf) checkUnderscoreNames(rrtype, host string) exitvals.CheckSeverity {
-	rlog := conf.tlog.With().Str("type", rrtype).Str("link", "https://www.iana.org/assignments/dns-parameters/dns-parameters.txt").Logger()
+	rlog := conf.tlog.With().Str("type", rrtype).Logger()
 	exitVal := exitvals.CheckOK
 
 	for _, elem := range strings.Split(host, ".") {
@@ -96,20 +97,20 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) exitvals.CheckSeveri
 		}
 		okTypes, ok := rfc8552[strings.ToLower(elem)]
 		if !ok {
-			rlog.Debug().Str("host", elem).Msg("global definition does not define this underscore host")
+			rlog.Debug().Str("host", elem).EmbedObject(internal.DCTL1021).Msg("")
 			exitVal |= exitvals.CheckDebug
 			continue
 		}
 
 		templateType, ok := recordToType[strings.ToUpper(rrtype)]
 		if !ok {
-			rlog.Info().Str("host", elem).Msg("global definition does not have this host and type pair")
+			rlog.Info().Str("host", elem).EmbedObject(internal.DCTL1021).Msg("")
 			exitVal |= exitvals.CheckInfo
 			continue
 		}
 
 		if !slices.Contains(append([]uint16{TypeNS, TypeCNAME}, okTypes...), templateType) {
-			rlog.Info().Str("host", elem).Msg("global definition does not have this host and type pair")
+			rlog.Info().Str("host", elem).EmbedObject(internal.DCTL1021).Msg("")
 			exitVal |= exitvals.CheckInfo
 		}
 	}

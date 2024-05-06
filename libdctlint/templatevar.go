@@ -32,14 +32,14 @@ func checkSingleString(input string, rlog zerolog.Logger) exitvals.CheckSeverity
 		}
 		if withInVar {
 			if !(('0' <= c && '9' >= c) || ('a' <= c && 'z' >= c) || ('A' <= c && 'Z' >= c) || c == '_' || c == '-') {
-				rlog.Warn().Str("invalid", input).Msg("invalid character found in variable string")
+				rlog.Warn().Str("invalid", input).EmbedObject(internal.DCTL1019).Msg("")
 				return exitvals.CheckWarn
 			}
 		}
 	}
 
 	if withInVar {
-		rlog.Error().Str("invalid", input).Msg("variable string is not terminated")
+		rlog.Error().Str("invalid", input).EmbedObject(internal.DCTL1020).Msg("")
 		return exitvals.CheckError
 	}
 

@@ -100,7 +100,7 @@ func (sint *SINT) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	exitVal = exitvals.CheckInfo
-	smuggledLog.Info().Str("value", s).Msg("do not quote an integer, it makes it string")
+	smuggledLog.Info().Str("value", s).EmbedObject(DCTL1001).Msg("")
 	*sint = SINT(i)
 	return nil
 }
