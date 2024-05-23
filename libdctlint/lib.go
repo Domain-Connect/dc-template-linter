@@ -45,7 +45,7 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitv
 		conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 		return template, exitvals.CheckFatal
 	}
-	exitVal |= conf.checkTemplate(f, template)
+	exitVal |= conf.checkTemplate(template)
 	return template, exitVal
 }
 
@@ -59,7 +59,7 @@ func (conf *Conf) CheckTemplate(f *bufio.Reader) exitvals.CheckSeverity {
 	return exitVal
 }
 
-func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exitvals.CheckSeverity {
+func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 	// Ensure ID fields use valid characters
 	if checkInvalidChars(template.ProviderID) {
@@ -167,7 +167,11 @@ func (conf *Conf) checkTemplate(f *bufio.Reader, template internal.Template) exi
 			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 			return exitVal | exitvals.CheckError
 		}
-		fmt.Fprintf(&out, "\n")
+		_, err = fmt.Fprintf(&out, "\n")
+		if err != nil {
+			conf.tlog.Error().Err(err).Msg("could not print to output")
+			exitVal += exitvals.CheckFatal
+		}
 
 		// Decide where to write
 		if conf.inplace {
@@ -227,7 +231,11 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 		conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL0004).Msg("")
 		return exitvals.CheckError
 	}
-	writer.Flush()
+	err = writer.Flush()
+	if err != nil {
+		conf.tlog.Error().Err(err).Msg("could not write file")
+		return exitvals.CheckFatal
+	}
 
 	// Move temporary file where the original file is
 	err = os.Rename(outfile.Name(), conf.fileName)

@@ -1,3 +1,6 @@
+// Package exitvals are used to communicate what level of issues the
+// libdctlint/ was able to detect.  The error value should be checked in
+// downstream code.
 package exitvals
 
 // A CheckSeverity represent status of the template check.

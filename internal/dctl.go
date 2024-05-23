@@ -1,3 +1,4 @@
+// Package internal contains Domain Connect Template Linter messaging code values.
 package internal
 
 import (

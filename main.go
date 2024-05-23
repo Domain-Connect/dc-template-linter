@@ -1,3 +1,4 @@
+// Package main defines the dc-template-linter executable entry point.
 package main
 
 /*
@@ -39,11 +40,11 @@ func main() {
 
 	// Command line option handling
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] <template.json> [...]\n", os.Args[0])
+		_, _ = fmt.Fprintf(os.Stderr, "Usage: %s [options] <template.json> [...]\n", os.Args[0])
 		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "Warning. -inplace and -pretty will remove zero priority MX and SRV fields\n")
-		fmt.Fprintf(os.Stderr, "You can find long DCTL explanations in wiki\n")
-		fmt.Fprintf(os.Stderr, "e.g., https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1001\n")
+		_, _ = fmt.Fprintf(os.Stderr, "Warning. -inplace and -pretty will remove zero priority MX and SRV fields\n")
+		_, _ = fmt.Fprintf(os.Stderr, "You can find long DCTL explanations in wiki\n")
+		_, _ = fmt.Fprintf(os.Stderr, "e.g., https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1001\n")
 	}
 	checkLogos := flag.Bool("logos", false, "check logo urls are reachable (requires network)")
 	cloudflare := flag.Bool("cloudflare", false, "use Cloudflare specific template rules")
@@ -58,7 +59,7 @@ func main() {
 
 	// Did user want to know version
 	if *version {
-		fmt.Printf("dc-template-linter version %d\n", dcTemplateLinterVersion)
+		_, _ = fmt.Printf("dc-template-linter version %d\n", dcTemplateLinterVersion)
 		os.Exit(0)
 	}
 
@@ -90,12 +91,16 @@ func main() {
 			f, err := os.Open(arg)
 			if err != nil {
 				log.Error().Err(err).EmbedObject(internal.DCTL0001).Msg("")
-				exitVal = exitvals.CheckError
+				exitVal |= exitvals.CheckError
 				continue
 			}
 			log.Debug().Str("template", arg).Msg("processing template")
 			exitVal |= conf.CheckTemplate(bufio.NewReader(f))
-			f.Close()
+			err = f.Close()
+			if err != nil {
+				log.Error().Err(err).Msg("could not close file")
+				exitVal |= exitvals.CheckFatal
+			}
 		}
 	}
 
