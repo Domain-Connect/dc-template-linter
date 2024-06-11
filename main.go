@@ -52,7 +52,7 @@ func main() {
 	increment := flag.Bool("increment", false, "increment template version, useful when pretty-printing")
 	prettyPrint := flag.Bool("pretty", false, "pretty-print template json")
 	loglevel := flag.String("loglevel", "info", "loglevel can be one of: panic fatal error warn info debug trace")
-	toleration := flag.String("tolerate", "info", "non-zero return loglevel treshold: any error warn info debug none")
+	toleration := flag.String("tolerate", "info", "non-zero return loglevel threshold: any error warn info debug none")
 	ttl := flag.Uint("ttl", 0, "-inplace ttl fix value to be used when template ttl is zero or invalid")
 	version := flag.Bool("version", false, "output version information and exit")
 	flag.Parse()

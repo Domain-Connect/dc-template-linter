@@ -40,7 +40,7 @@ Usage: dc-template-linter [options] <template.json> [...]
   -pretty
 	pretty-print template json
   -tolerate string
-	non-zero return loglevel treshold: any error warn info debug none (default "info")
+	non-zero return loglevel threshold: any error warn info debug none (default "info")
   -ttl uint
 	-inplace ttl fix value to be used when template ttl is zero or invalid
   -version
