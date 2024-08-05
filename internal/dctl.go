@@ -78,7 +78,7 @@ var dctlToString = map[DCTL]string{
 
 	// domain connect specific messages
 	DCTL1000: "ttl value exceeds maximum",
-	DCTL1001: "do not quote an integer",
+	DCTL1001: "<not in use after string-interger-variable values>",
 	DCTL1002: "id contains invalid characters",
 	DCTL1003: "file name does not use required pattern",
 	DCTL1004: "duplicate provierId + serviceId detected",

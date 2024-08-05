@@ -86,8 +86,8 @@ func (conf *Conf) checkRecord(
 			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "pointsTo", rlog)
-		if record.Priority < 0 || max31b < record.Priority {
-			rlog.Error().Int("priority", int(record.Priority)).EmbedObject(internal.DCTL1015).Msg("")
+		if priority, ok := record.Priority.Uint32(); ok && (priority < 0 || max31b < priority) {
+			rlog.Error().Uint32("priority", priority).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 
@@ -97,20 +97,20 @@ func (conf *Conf) checkRecord(
 			rlog.Warn().Str("protocol", record.Protocol).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckWarn
 		}
-		if record.Priority < 0 || max31b < record.Priority {
-			rlog.Error().Int("priority", int(record.Priority)).EmbedObject(internal.DCTL1015).Msg("")
+		if priority, ok := record.Priority.Uint32(); ok && (priority < 0 || max31b < priority) {
+			rlog.Error().Uint32("priority", priority).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		if record.Service == "" {
 			rlog.Error().Str("key", "service").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
-		if record.Weight < 0 || max31b < record.Weight {
-			rlog.Error().Int("weight", int(record.Weight)).EmbedObject(internal.DCTL1015).Msg("")
+		if weight, ok := record.Priority.Uint32(); ok && (weight < 0 || max31b < weight) {
+			rlog.Error().Uint32("weight", weight).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
-		if record.Port < 1 || max16b < record.Port {
-			rlog.Error().Int("port", int(record.Port)).EmbedObject(internal.DCTL1015).Msg("")
+		if port, ok := record.Priority.Uint16(); ok && (port < 1 || max16b < port) {
+			rlog.Error().Uint16("port", port).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 
@@ -153,18 +153,17 @@ func (conf *Conf) checkRecord(
 	}
 
 	// A calid json int can be out of bounds in DNS
-	invalidTTL := false
-	if record.TTL < 0 || MaxTTL < record.TTL {
-		rlog.Error().Int("ttl", int(record.TTL)).EmbedObject(internal.DCTL1015).Msg("")
+	ttl, ok := record.TTL.Uint32()
+	if ok && ttl < 0 || MaxTTL < ttl {
+		rlog.Error().Uint32("ttl", ttl).EmbedObject(internal.DCTL1015).Msg("")
 		exitVal |= exitvals.CheckError
-		invalidTTL = true
-	} else if conf.cloudflare && record.TTL == 0 {
+	} else if ok && conf.cloudflare && ttl == 0 {
 		rlog.Info().EmbedObject(internal.DCTL5010).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
-	if invalidTTL || record.TTL == 0 && conf.inplace && 0 < conf.ttl && requiresTTL(record.Type) {
-		rlog.Info().Uint("ttl", conf.ttl).Msg("adding ttl to the record")
-		record.TTL = internal.SINT(conf.ttl)
+	if !ok && ttl == 0 && conf.inplace && 0 < conf.ttl && requiresTTL(record.Type) && isVariable(string(record.TTL)) {
+		rlog.Info().Uint32("ttl", conf.ttl).Msg("adding ttl to the record")
+		record.TTL.SetUint32(conf.ttl)
 	}
 
 	// Enforce Domain Connect spec

@@ -32,7 +32,6 @@ const (
 // outside of this project.
 func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitvals.CheckSeverity) {
 	conf.SetLogger(log.With().Str("template", conf.fileName).Logger())
-	internal.SetLogger(conf.tlog)
 	conf.tlog.Debug().Msg("starting template check")
 
 	// Decode json
@@ -40,12 +39,11 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitv
 	decoder.DisallowUnknownFields()
 	var template internal.Template
 	err := decoder.Decode(&template)
-	exitVal := internal.GetUnmarshalStatus()
 	if err != nil {
-		conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
+		conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("a")
 		return template, exitvals.CheckFatal
 	}
-	exitVal |= conf.checkTemplate(template)
+	exitVal := conf.checkTemplate(template)
 	return template, exitVal
 }
 
@@ -101,7 +99,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	}
 
 	// Field checks provided by this file
-	if template.Version < 0 {
+	if len(template.Version) == 0 {
 		conf.tlog.Info().EmbedObject(internal.DCTL1006).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
@@ -151,12 +149,12 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	// Pretty printing and/or inplace write output
 	if conf.prettyPrint || conf.inplace {
 		if conf.increment {
-			template.Version++
+			template.Version.Inc()
 		}
 		// Convert to json
 		marshaled, err := json.Marshal(template)
 		if err != nil {
-			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
+			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("b")
 			return exitVal | exitvals.CheckError
 		}
 
@@ -164,7 +162,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		var out bytes.Buffer
 		err = json.Indent(&out, marshaled, "", "    ")
 		if err != nil {
-			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
+			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("c")
 			return exitVal | exitvals.CheckError
 		}
 		_, err = fmt.Fprintf(&out, "\n")

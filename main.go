@@ -44,7 +44,7 @@ func main() {
 		flag.PrintDefaults()
 		_, _ = fmt.Fprintf(os.Stderr, "Warning. -inplace and -pretty will remove zero priority MX and SRV fields\n")
 		_, _ = fmt.Fprintf(os.Stderr, "You can find long DCTL explanations in wiki\n")
-		_, _ = fmt.Fprintf(os.Stderr, "e.g., https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1001\n")
+		_, _ = fmt.Fprintf(os.Stderr, "e.g., https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1003\n")
 	}
 	checkLogos := flag.Bool("logos", false, "check logo urls are reachable (requires network)")
 	cloudflare := flag.Bool("cloudflare", false, "use Cloudflare specific template rules")
@@ -83,7 +83,7 @@ func main() {
 		exitVal = conf.CheckTemplate(reader)
 	} else {
 		conf.SetInplace(*inplace).
-			SetTTL(*ttl).
+			SetTTL(uint32(*ttl)).
 			SetIncrement(*increment)
 
 		for _, arg := range flag.Args() {

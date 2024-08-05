@@ -2,13 +2,8 @@ package internal
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"strconv"
-	"sync"
-
-	"github.com/Domain-Connect/dc-template-linter/exitvals"
-
-	"github.com/rs/zerolog"
 )
 
 type Template struct {
@@ -54,63 +49,61 @@ type Record struct {
 	SPFRules  string `json:"spfRules,omitempty" validate:"min=1"`
 }
 
-type SINT int
-
-// exitVal is a side channel to catch UnmarshalJSON failure. The standard
-// golang json parser does not have means for extra values, and sending a
-// message via error is not great either - it will stop parsing, which is
-// annoying if early entry in records list is stringy entry but can be
-// recovered while causing warning.
-var exitVal exitvals.CheckSeverity
-
-// smuggledLog is similar side channel to exitVal but for json parser extra
-// input rather than output.
-var smuggledLog zerolog.Logger
-
-// lock will ensure only one exitVal / logger pair is in use.
-var mu sync.Mutex
+type SINT string
 
 // UnmarshalJSON can take string and integer version of an int and return
 // int. When int is integer all happens without complaints, but a string int
 // will cause warning and conversion to int. The json parsing will fail
 // completely when string is not integer at all.
 func (sint *SINT) UnmarshalJSON(b []byte) error {
-	locked := mu.TryLock()
-	if locked {
-		return errors.New("BUG: SetLogger() call was not used")
-	}
-	exitVal = exitvals.CheckOK
-
-	if b[0] != '"' {
-		err := json.Unmarshal(b, (*int)(sint))
-		if err != nil {
-			exitVal = exitvals.CheckError
-		}
-		return err
-	}
-	var s string
-	err := json.Unmarshal(b, &s)
+	s, err := strconv.Unquote(string(b))
 	if err != nil {
-		exitVal = exitvals.CheckError
-		return err
+		// cannot unquote, value is numeric
+		*sint = SINT(b)
+		return nil
 	}
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		exitVal = exitvals.CheckError
-		return err
-	}
-	exitVal = exitvals.CheckInfo
-	smuggledLog.Info().Str("value", s).EmbedObject(DCTL1001).Msg("")
-	*sint = SINT(i)
+	*sint = SINT(s)
 	return nil
 }
 
-func SetLogger(l zerolog.Logger) {
-	mu.Lock()
-	smuggledLog = l
+func (sint *SINT) MarshalJSON() ([]byte, error) {
+	s := string(*sint)
+	c := s[0]
+	if (c < '0' || '9' < c) && (c != '%' || s[len(s)-1] != '%') {
+		return []byte{}, fmt.Errorf("invalid string-interger-variable: %s", string(*sint))
+	}
+	quoted := fmt.Sprintf("\"%s\"", *sint)
+	return []byte(quoted), nil
 }
 
-func GetUnmarshalStatus() exitvals.CheckSeverity {
-	defer mu.Unlock()
-	return exitVal
+func (sint *SINT) Inc() {
+	i, err := strconv.Atoi(string(*sint))
+	if err != nil {
+		return
+	}
+	i++
+	s := fmt.Sprintf("%d", i)
+	*sint = SINT(s)
+}
+
+func (sint *SINT) Uint32() (uint32, bool) {
+	var i uint32
+	err := json.Unmarshal([]byte(*sint), &i)
+	if err != nil {
+		return i, false
+	}
+	return i, true
+}
+
+func (sint *SINT) SetUint32(value uint32) {
+	s := fmt.Sprintf("%d", value)
+	*sint = SINT(s)
+}
+
+func (sint *SINT) Uint16() (uint16, bool) {
+	i, err := strconv.Atoi(string(*sint))
+	if err != nil {
+		return 0, false
+	}
+	return uint16(i), true
 }

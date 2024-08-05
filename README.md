@@ -47,5 +47,5 @@ Usage: dc-template-linter [options] <template.json> [...]
 	output version information and exit
 Warning. -inplace and -pretty will remove zero priority MX and SRV fields
 You can find long DCTL explanations in wiki
-e.g., https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1001
+e.g., https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1003
 ```

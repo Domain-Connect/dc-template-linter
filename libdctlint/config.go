@@ -16,7 +16,7 @@ type Conf struct {
 	inplace     bool
 	increment   bool
 	prettyPrint bool
-	ttl         uint
+	ttl         uint32
 }
 
 // NewConf will create template check configuration.
@@ -61,7 +61,7 @@ func (c *Conf) SetPrettyPrint(b bool) *Conf {
 	return c
 }
 
-func (c *Conf) SetTTL(t uint) *Conf {
+func (c *Conf) SetTTL(t uint32) *Conf {
 	c.ttl = t
 	return c
 }
