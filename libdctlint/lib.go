@@ -99,7 +99,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	}
 
 	// Field checks provided by this file
-	if len(template.Version) == 0 {
+	if template.Version == 0 {
 		conf.tlog.Info().EmbedObject(internal.DCTL1006).Msg("")
 		exitVal |= exitvals.CheckInfo
 	}
@@ -149,7 +149,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	// Pretty printing and/or inplace write output
 	if conf.prettyPrint || conf.inplace {
 		if conf.increment {
-			template.Version.Inc()
+			template.Version++
 		}
 		// Convert to json
 		marshaled, err := json.Marshal(template)

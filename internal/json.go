@@ -11,7 +11,7 @@ type Template struct {
 	ProviderName        string  `json:"providerName" validate:"required,min=1,max=64"`
 	ServiceID           string  `json:"serviceId" validate:"required,min=1,max=64"`
 	ServiceName         string  `json:"serviceName" validate:"required,min=1,max=255"`
-	Version             SINT    `json:"version,omitempty"`
+	Version             uint    `json:"version,omitempty"`
 	Logo                string  `json:"logoUrl,omitempty"`
 	Description         string  `json:"description,omitempty"`
 	VariableDescription string  `json:"variableDescription,omitempty"`
@@ -74,16 +74,6 @@ func (sint *SINT) MarshalJSON() ([]byte, error) {
 	}
 	quoted := fmt.Sprintf("\"%s\"", *sint)
 	return []byte(quoted), nil
-}
-
-func (sint *SINT) Inc() {
-	i, err := strconv.Atoi(string(*sint))
-	if err != nil {
-		return
-	}
-	i++
-	s := fmt.Sprintf("%d", i)
-	*sint = SINT(s)
 }
 
 func (sint *SINT) Uint32() (uint32, bool) {
