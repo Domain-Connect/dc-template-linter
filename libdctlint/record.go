@@ -75,7 +75,7 @@ func (conf *Conf) checkRecord(
 			rlog.Warn().Str("key", "txtConflictMatchingPrefix").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckWarn
 		}
-		if strings.HasPrefix(record.Data, "v=spf1") {
+		if strings.Contains(record.Data, "v=spf1") {
 			rlog.Info().EmbedObject(internal.DCTL1014).Msg("")
 			exitVal |= exitvals.CheckInfo
 		}
