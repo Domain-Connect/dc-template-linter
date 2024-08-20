@@ -67,6 +67,8 @@ func main() {
 	internal.SetLoglevel(*loglevel)
 	exitVal := exitvals.CheckOK
 
+	log.Debug().Uint("version", dcTemplateLinterVersion).Msg("dc-template-linter version")
+
 	if libdctlint.MaxTTL < *ttl {
 		log.Fatal().Uint("ttl", *ttl).Uint("max", libdctlint.MaxTTL).EmbedObject(internal.DCTL1000).Msg("")
 	}
