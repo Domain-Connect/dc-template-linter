@@ -262,15 +262,15 @@ func checkSPFRules(rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 
 	if rules == "" {
-		rlog.Error().Str("data", "record data is empty string").EmbedObject(internal.DCTL1013).Msg("")
+		rlog.Error().Str("spfRules", "record spfRules is empty string").EmbedObject(internal.DCTL1013).Msg("")
 		return exitvals.CheckError
 	}
 	if strings.HasPrefix(rules, "v=spf1") {
-		rlog.Error().Str("data", "v=spf1").EmbedObject(internal.DCTL1017).Msg("")
+		rlog.Error().Str("spfRules", "v=spf1").EmbedObject(internal.DCTL1017).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 	if strings.HasSuffix(rules, "all") {
-		rlog.Error().Str("data", "all").EmbedObject(internal.DCTL1017).Msg("")
+		rlog.Error().Str("spfRules", "all").EmbedObject(internal.DCTL1017).Msg("")
 		exitVal |= exitvals.CheckError
 	}
 
