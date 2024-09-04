@@ -105,11 +105,11 @@ func (conf *Conf) checkRecord(
 			rlog.Error().Str("key", "service").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
-		if weight, ok := record.Priority.Uint32(); ok && (weight < 0 || max31b < weight) {
+		if weight, ok := record.Weight.Uint32(); ok && (weight < 0 || max31b < weight) {
 			rlog.Error().Uint32("weight", weight).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
-		if port, ok := record.Priority.Uint16(); ok && (port < 1 || max16b < port) {
+		if port, ok := record.Port.Uint16(); ok && (port < 1 || max16b < port) {
 			rlog.Error().Uint16("port", port).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
