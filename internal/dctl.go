@@ -48,6 +48,7 @@ const (
 	DCTL1019 DCTL = 1019
 	DCTL1020 DCTL = 1020
 	DCTL1021 DCTL = 1021
+	DCTL1022 DCTL = 1022
 
 	DCTL5000 DCTL = 5000
 	DCTL5001 DCTL = 5001
@@ -99,6 +100,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1019: "variable contains invalid character",
 	DCTL1020: "variable is not terminated",
 	DCTL1021: "missing from iana definitions",
+	DCTL1022: "invalid hostname",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",

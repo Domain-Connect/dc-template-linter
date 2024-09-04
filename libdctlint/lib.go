@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/net/idna"
 )
 
 const (
@@ -130,6 +131,16 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	// Logo url reachability check
 	if err := conf.isUnreachable(template.Logo); err != nil {
 		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).EmbedObject(internal.DCTL1010).Msg("")
+		exitVal |= exitvals.CheckWarn
+	}
+
+	if err := checkHostname(template.SyncPubKeyDomain); err != nil {
+		conf.tlog.Error().Err(err).Str("SyncPubKeyDomain", template.SyncPubKeyDomain).EmbedObject(internal.DCTL1022).Msg("")
+		exitVal |= exitvals.CheckWarn
+	}
+
+	if err := checkSyncRedirectDomain(template.SyncRedirectDomain); err != nil {
+		conf.tlog.Error().Err(err).Str("SyncRedirectDomain", template.SyncRedirectDomain).EmbedObject(internal.DCTL1022).Msg("")
 		exitVal |= exitvals.CheckWarn
 	}
 
@@ -247,6 +258,26 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 
 func isVariable(s string) bool {
 	return strings.Count(s, "%") > 1
+}
+
+func checkSyncRedirectDomain(srd string) (err error) {
+	srdList := strings.Split(srd, ",")
+	for i := range srdList {
+		trimmed := strings.TrimSpace(srdList[i])
+		e := checkHostname(trimmed)
+		if e != nil {
+			err = e
+		}
+	}
+	return err
+}
+
+func checkHostname(host string) error {
+	parser := idna.New(
+		idna.MapForLookup(),
+	)
+	_, err := parser.ToASCII(host)
+	return err
 }
 
 func (conf *Conf) cloudflareTemplateChecks(template internal.Template) exitvals.CheckSeverity {
