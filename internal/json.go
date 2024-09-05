@@ -12,7 +12,7 @@ type Template struct {
 	ServiceID           string  `json:"serviceId" validate:"required,min=1,max=64"`
 	ServiceName         string  `json:"serviceName" validate:"required,min=1,max=255"`
 	Version             uint    `json:"version,omitempty"`
-	Logo                string  `json:"logoUrl,omitempty"`
+	Logo                string  `json:"logoUrl,omitempty" validate:"omitempty,http_url"`
 	Description         string  `json:"description,omitempty"`
 	VariableDescription string  `json:"variableDescription,omitempty"`
 	Shared              bool    `json:"shared,omitempty"` /* deprecated */
