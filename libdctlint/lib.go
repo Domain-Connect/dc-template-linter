@@ -19,9 +19,9 @@ import (
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
 
+	gonet "github.com/THREATINT/go-net"
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/net/idna"
 )
 
 const (
@@ -134,7 +134,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		exitVal |= exitvals.CheckWarn
 	}
 
-	if err := checkHostname(template.SyncPubKeyDomain); err != nil {
+	if err := checkFQDN(template.SyncPubKeyDomain); err != nil {
 		conf.tlog.Error().Err(err).Str("SyncPubKeyDomain", template.SyncPubKeyDomain).EmbedObject(internal.DCTL1022).Msg("")
 		exitVal |= exitvals.CheckWarn
 	}
@@ -264,20 +264,28 @@ func checkSyncRedirectDomain(srd string) (err error) {
 	srdList := strings.Split(srd, ",")
 	for i := range srdList {
 		trimmed := strings.TrimSpace(srdList[i])
-		e := checkHostname(trimmed)
-		if e != nil {
+		e := checkFQDN(trimmed)
+		if e != nil && err == nil {
 			err = e
 		}
 	}
 	return err
 }
 
-func checkHostname(host string) error {
-	parser := idna.New(
-		idna.MapForLookup(),
-	)
-	_, err := parser.ToASCII(host)
-	return err
+func checkFQDN(fqdn string) error {
+	if fqdn == "" {
+		return nil
+	}
+	if gonet.IsFQDN(fqdn) {
+		fqdn = gonet.DomainFromFqdn(fqdn)
+	}
+	if !gonet.IsDomain(fqdn) {
+		return fmt.Errorf("failed go-net.IsFQDN() test: '%s'", fqdn)
+	}
+	if strings.IndexRune(fqdn, '.') == -1 {
+		return fmt.Errorf("tld is not allowed")
+	}
+	return nil
 }
 
 func (conf *Conf) cloudflareTemplateChecks(template internal.Template) exitvals.CheckSeverity {
