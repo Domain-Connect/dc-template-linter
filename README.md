@@ -18,7 +18,7 @@ $GOPATH/bin/dc-template-linter ./Templates/*.json
 When argument is not defined linter will read stdin.
 
 ```
-curl -s https://raw.githubusercontent.com/Domain-Connect/Templates/master/acymailing.com.acymailer.json |
+curl -s https://raw.githubusercontent.com/Domain-Connect/Templates/master/exampleservice.domainconnect.org.template1.json |
 $GOPATH/bin/dc-template-linter -logos -loglevel debug
 ```
 
