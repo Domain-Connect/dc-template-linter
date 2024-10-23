@@ -4,15 +4,16 @@ go 1.22.0
 
 require (
 	github.com/THREATINT/go-net v1.2.38
+	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/go-playground/validator/v10 v10.22.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/rs/zerolog v1.33.0
-	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6
+	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 )
 
 require (
 	github.com/PuerkitoBio/purell v1.2.1 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.6 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

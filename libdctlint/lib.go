@@ -152,6 +152,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 
 	// Template records checks
 	conflictingTypes := make(map[string]string)
+	conf.duplicates = make(map[uint64]bool)
 	for rnum, record := range template.Records {
 		exitVal |= conf.checkRecord(template, rnum, &record, conflictingTypes)
 		template.Records[rnum] = record

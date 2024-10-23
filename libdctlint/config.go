@@ -11,6 +11,7 @@ type Conf struct {
 	fileName    string
 	tlog        zerolog.Logger
 	collision   map[string]bool
+	duplicates  map[uint64]bool
 	checkLogos  bool
 	cloudflare  bool
 	inplace     bool

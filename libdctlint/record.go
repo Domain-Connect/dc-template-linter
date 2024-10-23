@@ -26,6 +26,8 @@ func (conf *Conf) checkRecord(
 	rlog := conf.tlog.With().Str("groupid", record.GroupID).Int("record", rnum).Str("type", record.Type).Logger()
 	rlog.Debug().Str("host", record.Host).Msg("check record")
 
+	exitVal |= conf.findDuplicates(record, rlog)
+
 	// Try to catch CNAME usage with other records
 	if t, ok := conflictingTypes[record.GroupID+"/"+record.Host]; ok && (t == strCNAME || record.Type == strCNAME) {
 		rlog.Error().
