@@ -1,6 +1,8 @@
 package libdctlint
 
 import (
+	"strings"
+
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
 
@@ -36,6 +38,11 @@ func checkSingleString(input string, rlog zerolog.Logger) exitvals.CheckSeverity
 				return exitvals.CheckWarn
 			}
 		}
+	}
+
+	if strings.Contains(input, "%host%") {
+		rlog.Warn().Str("invalid", input).EmbedObject(internal.DCTL1024).Msg("")
+		return exitvals.CheckWarn
 	}
 
 	if withInVar {
