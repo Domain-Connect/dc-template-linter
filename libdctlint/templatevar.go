@@ -41,8 +41,8 @@ func checkSingleString(input string, rlog zerolog.Logger) exitvals.CheckSeverity
 	}
 
 	if strings.Contains(input, "%host%") {
-		rlog.Warn().Str("invalid", input).EmbedObject(internal.DCTL1024).Msg("")
-		return exitvals.CheckWarn
+		rlog.Info().Str("invalid", input).EmbedObject(internal.DCTL1024).Msg("")
+		return exitvals.CheckInfo
 	}
 
 	if withInVar {
