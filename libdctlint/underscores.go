@@ -92,6 +92,13 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) exitvals.CheckSeveri
 	exitVal := exitvals.CheckOK
 
 	for _, elem := range strings.Split(host, ".") {
+		location := strings.Index(elem, "_")
+		if location > 1 && isStaticLabelUnderscore(elem) {
+			rlog.Info().Str("host", elem).EmbedObject(internal.DCTL1025).Msg("")
+			exitVal |= exitvals.CheckInfo
+			continue
+		}
+
 		if len(elem) == 0 || elem[0] != '_' {
 			continue
 		}
@@ -116,4 +123,18 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) exitvals.CheckSeveri
 	}
 
 	return exitVal
+}
+
+func isStaticLabelUnderscore(elem string) bool {
+	withInVariable := false
+
+	for _, c := range elem {
+		if c == '%' {
+			withInVariable = !withInVariable
+		}
+		if !withInVariable && c == '_' {
+			return true
+		}
+	}
+	return false
 }
