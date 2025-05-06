@@ -88,7 +88,7 @@ func (conf *Conf) checkRecord(
 			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "pointsTo", rlog)
-		if priority, ok := record.Priority.Uint32(); ok && (priority < 0 || max31b < priority) {
+		if priority, ok := record.Priority.Uint32(); ok && max31b < priority {
 			rlog.Error().Uint32("priority", priority).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
@@ -99,7 +99,7 @@ func (conf *Conf) checkRecord(
 			rlog.Warn().Str("protocol", record.Protocol).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckWarn
 		}
-		if priority, ok := record.Priority.Uint32(); ok && (priority < 0 || max31b < priority) {
+		if priority, ok := record.Priority.Uint32(); ok && max31b < priority {
 			rlog.Error().Uint32("priority", priority).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
@@ -107,7 +107,7 @@ func (conf *Conf) checkRecord(
 			rlog.Error().Str("key", "service").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
-		if weight, ok := record.Weight.Uint32(); ok && (weight < 0 || max31b < weight) {
+		if weight, ok := record.Weight.Uint32(); ok && max31b < weight {
 			rlog.Error().Uint32("weight", weight).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
@@ -156,7 +156,7 @@ func (conf *Conf) checkRecord(
 
 	// A calid json int can be out of bounds in DNS
 	ttl, ok := record.TTL.Uint32()
-	if ok && ttl < 0 || MaxTTL < ttl {
+	if ok || MaxTTL < ttl {
 		rlog.Error().Uint32("ttl", ttl).EmbedObject(internal.DCTL1015).Msg("")
 		exitVal |= exitvals.CheckError
 	} else if ok && conf.cloudflare && ttl == 0 {
@@ -220,7 +220,7 @@ func targetCheck(record *internal.Record, requiredField string, rlog zerolog.Log
 
 	recordTypes := reflect.TypeOf(*record)
 
-	for i := 0; i < recordTypes.NumField(); i++ {
+	for i := range recordTypes.NumField() {
 		field := recordTypes.Field(i)
 
 		jsonTag, ok := field.Tag.Lookup("json")

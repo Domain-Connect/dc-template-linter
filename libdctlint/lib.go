@@ -283,7 +283,7 @@ func checkFQDN(fqdn string) error {
 	if !gonet.IsDomain(fqdn) {
 		return fmt.Errorf("failed go-net.IsFQDN() test: '%s'", fqdn)
 	}
-	if strings.IndexRune(fqdn, '.') == -1 {
+	if !strings.ContainsRune(fqdn, '.') {
 		return fmt.Errorf("tld is not allowed")
 	}
 	return nil
