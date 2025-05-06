@@ -88,7 +88,7 @@ func (conf *Conf) checkRecord(
 			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "pointsTo", rlog)
-		if priority, ok := record.Priority.Uint32(); ok && max31b < priority {
+		if priority, ok := record.Priority.Uint32(); !ok || max31b < priority {
 			rlog.Error().Uint32("priority", priority).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
@@ -99,7 +99,7 @@ func (conf *Conf) checkRecord(
 			rlog.Warn().Str("protocol", record.Protocol).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckWarn
 		}
-		if priority, ok := record.Priority.Uint32(); ok && max31b < priority {
+		if priority, ok := record.Priority.Uint32(); !ok || max31b < priority {
 			rlog.Error().Uint32("priority", priority).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
@@ -107,11 +107,11 @@ func (conf *Conf) checkRecord(
 			rlog.Error().Str("key", "service").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
-		if weight, ok := record.Weight.Uint32(); ok && max31b < weight {
+		if weight, ok := record.Weight.Uint32(); !ok || max31b < weight {
 			rlog.Error().Uint32("weight", weight).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
-		if port, ok := record.Port.Uint16(); ok && (port < 1 || max16b < port) {
+		if port, ok := record.Port.Uint16(); !ok || max16b < port {
 			rlog.Error().Uint16("port", port).EmbedObject(internal.DCTL1015).Msg("")
 			exitVal |= exitvals.CheckError
 		}
@@ -156,7 +156,7 @@ func (conf *Conf) checkRecord(
 
 	// A calid json int can be out of bounds in DNS
 	ttl, ok := record.TTL.Uint32()
-	if ok || MaxTTL < ttl {
+	if ok && MaxTTL < ttl {
 		rlog.Error().Uint32("ttl", ttl).EmbedObject(internal.DCTL1015).Msg("")
 		exitVal |= exitvals.CheckError
 	} else if ok && conf.cloudflare && ttl == 0 {
@@ -197,7 +197,7 @@ func isInvalidProtocol(proto string) bool {
 	case "_tcp", "_udp", "_tls":
 		return false
 	}
-	return true
+	return strings.Count(proto, "%") == 0
 }
 
 func requiresTTL(recordType string) bool {

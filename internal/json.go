@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type Template struct {
@@ -80,7 +81,7 @@ func (sint *SINT) Uint32() (uint32, bool) {
 	var i uint32
 	err := json.Unmarshal([]byte(*sint), &i)
 	if err != nil {
-		return i, false
+		return i, strings.Count(string(*sint), "%") > 1
 	}
 	return i, true
 }
@@ -93,7 +94,7 @@ func (sint *SINT) SetUint32(value uint32) {
 func (sint *SINT) Uint16() (uint16, bool) {
 	i, err := strconv.Atoi(string(*sint))
 	if err != nil {
-		return 0, false
+		return 0, strings.Count(string(*sint), "%") > 1
 	}
 	return uint16(i), true
 }
