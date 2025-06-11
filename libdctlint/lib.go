@@ -232,7 +232,12 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 		conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL0005).Msg("")
 		return exitvals.CheckError
 	}
-	defer outfile.Close()
+	defer func() {
+		err := outfile.Close()
+		if err != nil {
+			conf.tlog.Error().Err(err).Msg("could not close output file")
+		}
+	}()
 
 	// Write to temporary file
 	writer := bufio.NewWriter(outfile)

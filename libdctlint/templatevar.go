@@ -33,7 +33,9 @@ func checkSingleString(input string, rlog zerolog.Logger) exitvals.CheckSeverity
 			continue
 		}
 		if withInVar {
-			if !(('0' <= c && '9' >= c) || ('a' <= c && 'z' >= c) || ('A' <= c && 'Z' >= c) || c == '_' || c == '-') {
+			if ('a' <= c && c <= 'z') || ('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || c == '_' || c == '-' {
+				// allowed characters
+			} else {
 				rlog.Warn().Str("invalid", input).EmbedObject(internal.DCTL1019).Msg("")
 				return exitvals.CheckWarn
 			}
