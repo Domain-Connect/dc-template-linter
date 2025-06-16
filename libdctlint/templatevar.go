@@ -24,6 +24,29 @@ func findInvalidTemplateStrings(record *internal.Record, rlog zerolog.Logger) ex
 	return exitVal
 }
 
+// in ascii smallest to greatest order
+const allowedChars = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+
+func isDenied(needle rune) bool {
+	start := 0
+	end := len(allowedChars) - 1
+	mid := len(allowedChars) / 2
+	for start <= end {
+		value := rune(allowedChars[mid])
+		if value == needle {
+			return false
+		}
+		if value > needle {
+			end = mid - 1
+			mid = (start + end) / 2
+			continue
+		}
+		start = mid + 1
+		mid = (start + end) / 2
+	}
+	return true
+}
+
 func checkSingleString(input string, rlog zerolog.Logger) exitvals.CheckSeverity {
 	withInVar := false
 
@@ -33,9 +56,7 @@ func checkSingleString(input string, rlog zerolog.Logger) exitvals.CheckSeverity
 			continue
 		}
 		if withInVar {
-			if ('a' <= c && c <= 'z') || ('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || c == '_' || c == '-' {
-				// allowed characters
-			} else {
+			if isDenied(c) {
 				rlog.Warn().Str("invalid", input).EmbedObject(internal.DCTL1019).Msg("")
 				return exitvals.CheckWarn
 			}
