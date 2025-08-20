@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
@@ -112,6 +113,14 @@ func (conf *Conf) checkRecord(
 		if strings.Contains(record.Data, "v=spf1") {
 			exitVal |= conf.emit(rlog, internal.DCTL1014, nil)
 		}
+
+	case "CAA":
+		if record.Host == "" {
+			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
+			exitVal |= exitvals.CheckError
+		}
+		// Validate CAA data string conforms to RFC 8659
+		exitVal |= checkCAA(conf, record.Data, rlog)
 
 	case "MX":
 		if record.Host == "" {
@@ -457,4 +466,98 @@ func checkBareVariables(s string) bool {
 	}
 
 	return true
+}
+
+func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeverity {
+	exitVal := exitvals.CheckOK
+
+	// check data is not empty
+	d := strings.TrimSpace(data)
+	if d == "" {
+		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("empty record", "")
+		})
+		return exitVal
+	}
+	if isVariable(d) {
+		return exitvals.CheckOK
+	}
+
+	// Split into fields: expect at least flags, tag and value
+	fields := strings.Fields(d)
+	if len(fields) < 3 {
+		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			return e.Int("numfields", len(fields))
+		})
+		return exitVal
+	}
+
+	// Validate flags (fields[0]) as unsigned integer 0..255
+	_, err := strconv.ParseUint(fields[0], 10, 8)
+	if err != nil {
+		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			return e.Err(err)
+		})
+	}
+
+	// Validate tag (fields[1])
+	tag := fields[1]
+	if tag == "" || strings.ToLower(tag) != tag || !regexp.MustCompile(`^[a-z0-9]+$`).MatchString(tag) {
+		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("invalid_tag", tag)
+		})
+	}
+
+	// Extract value as remaining fields
+	valueParts := fields[2:]
+	if len(valueParts) == 0 {
+		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("empty_values", "")
+		})
+		return exitVal
+	}
+	value := strings.Join(valueParts, " ")
+
+	// Value must be wrapped in double quotes; reject if not
+	if !(len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"') {
+		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("missing_quotes", value)
+		})
+		return exitVal
+	}
+	value = strings.TrimSpace(value[1 : len(value)-1])
+
+	// Validate value not empty
+	if value == "" {
+		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("empty_value", data)
+		})
+		return exitVal
+	}
+
+	// Minimal semantic checks for common tags
+	switch tag {
+	case "issue", "issuewild":
+		// Allow wildcard '*' or a domain, optionally followed by parameters after ';'
+		main := value
+		if i := strings.IndexByte(main, ';'); i != -1 {
+			main = strings.TrimSpace(main[:i])
+		}
+		if main == "" {
+			exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("empty_issue", main)
+			})
+		}
+	case "iodef":
+		v := strings.ToLower(value)
+		if !(strings.HasPrefix(v, "mailto:") || strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://")) {
+			exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("unexpected_iodef", v)
+			})
+		}
+	default:
+		// Unknown tags are allowed by RFC but must be lowercase token; already validated.
+	}
+
+	return exitVal
 }

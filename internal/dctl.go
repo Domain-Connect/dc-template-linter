@@ -68,6 +68,7 @@ const (
 	DCTL1038 DCTL = 1038
 	DCTL1039 DCTL = 1039
 	DCTL1040 DCTL = 1040
+	DCTL1041 DCTL = 1041
 
 	DCTL5000 DCTL = 5000
 	DCTL5001 DCTL = 5001
@@ -138,6 +139,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1038: "APEXCNAME and REDIRxxx records are not widely supported",
 	DCTL1039: "all records use the same variable as suffix, consider using host parameter instead",
 	DCTL1040: "bare variables in host or pointsTo record field",
+	DCTL1041: "invalid CAA record",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",
@@ -208,6 +210,7 @@ var dctlLevel = map[DCTL]zerolog.Level{
 	DCTL1038: zerolog.InfoLevel,
 	DCTL1039: zerolog.InfoLevel,
 	DCTL1040: zerolog.ErrorLevel,
+	DCTL1041: zerolog.ErrorLevel,
 
 	// cloudflare messages
 	DCTL5000: zerolog.ErrorLevel,
