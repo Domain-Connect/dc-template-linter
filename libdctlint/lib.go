@@ -139,7 +139,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		exitVal |= exitvals.CheckWarn
 	}
 
-	if err := checkSyncRedirectDomain(template.SyncRedirectDomain); err != nil {
+	if err := conf.checkSyncRedirectDomain(template.SyncRedirectDomain); err != nil {
 		conf.tlog.Error().Err(err).Str("SyncRedirectDomain", template.SyncRedirectDomain).EmbedObject(internal.DCTL1022).Msg("")
 		exitVal |= exitvals.CheckWarn
 	}
@@ -163,6 +163,10 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		if conf.increment {
 			template.Version++
 		}
+
+		// Remove white spaces, see DCTL1026
+		template.SyncRedirectDomain = internal.StripSpaces(template.SyncRedirectDomain)
+
 		// Convert to json
 		marshaled, err := json.Marshal(template)
 		if err != nil {
@@ -266,10 +270,13 @@ func isVariable(s string) bool {
 	return strings.Count(s, "%") > 1
 }
 
-func checkSyncRedirectDomain(srd string) (err error) {
+func (conf *Conf) checkSyncRedirectDomain(srd string) (err error) {
 	srdList := strings.Split(srd, ",")
 	for i := range srdList {
 		trimmed := strings.TrimSpace(srdList[i])
+		if trimmed != srdList[i] {
+			conf.tlog.Warn().Str("domain", srdList[i]).EmbedObject(internal.DCTL1026).Msg("")
+		}
 		e := checkFQDN(trimmed)
 		if e != nil && err == nil {
 			err = e
