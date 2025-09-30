@@ -90,8 +90,8 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	conf.collision[template.ProviderID+"/"+template.ServiceID] = true
 
 	// Check 'validate:' fields in internal/json.go definitions
-	Validator := validator.New()
-	err := Validator.Struct(template)
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	err := validate.Struct(template)
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
 			conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL1005).Msg("")
