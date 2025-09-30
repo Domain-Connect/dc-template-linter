@@ -99,6 +99,17 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		}
 	}
 
+	// and validate the records
+	for _, record := range template.Records {
+		err := validate.Struct(record)
+		if err != nil {
+			for _, err := range err.(validator.ValidationErrors) {
+				conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL1005).Msg("")
+				exitVal |= exitvals.CheckWarn
+			}
+		}
+	}
+
 	// Field checks provided by this file
 	if template.Version == 0 {
 		conf.tlog.Info().EmbedObject(internal.DCTL1006).Msg("")

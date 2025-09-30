@@ -32,22 +32,22 @@ type Records []Record
 
 type Record struct {
 	Type      string `json:"type" validate:"required,min=1,max=16"`
-	GroupID   string `json:"groupId,omitempty" validate:"min=1"`
-	Essential string `json:"essential,omitempty" validate:"oneof=Always OnApply"`
-	Host      string `json:"host,omitempty" validate:"min=1,max=255"`
-	Name      string `json:"name,omitempty" validate:"hostname"`
-	PointsTo  string `json:"pointsTo,omitempty" validate:"min=1,max=255"`
-	TTL       SINT   `json:"ttl,omitempty" validate:"required,min=1"`
-	Data      string `json:"data,omitempty" validate:"min=1"`
-	TxtCMM    string `json:"txtConflictMatchingMode,omitempty" validate:"oneof=None All Prefix"`
-	TxtCMP    string `json:"txtConflictMatchingPrefix,omitempty" validate:"min=1"`
-	Priority  SINT   `json:"priority,omitempty"`
-	Weight    SINT   `json:"weight,omitempty"`
-	Port      SINT   `json:"port,omitempty"`
-	Protocol  string `json:"protocol,omitempty" validate:"min=1"`
-	Service   string `json:"service,omitempty" validate:"min=1"`
-	Target    string `json:"target,omitempty" validate:"min=1"`
-	SPFRules  string `json:"spfRules,omitempty" validate:"min=1"`
+	GroupID   string `json:"groupId,omitempty" validate:"omitempty"`
+	Essential string `json:"essential,omitempty" validate:"omitempty,oneof=Always OnApply"`
+	Host      string `json:"host,omitempty" validate:"omitempty,max=255"`
+	Name      string `json:"name,omitempty" validate:"omitempty,max=63"`
+	PointsTo  string `json:"pointsTo,omitempty" validate:"omitempty,max=255"`
+	TTL       SINT   `json:"ttl,omitempty" validate:"omitempty,min=1"`
+	Data      string `json:"data,omitempty" validate:"required_if=Type TXT"`
+	TxtCMM    string `json:"txtConflictMatchingMode,omitempty" validate:"omitempty,oneof=None All Prefix"`
+	TxtCMP    string `json:"txtConflictMatchingPrefix,omitempty" validate:"omitempty"`
+	Priority  SINT   `json:"priority,omitempty validate:"required_if=Type SRV"`
+	Weight    SINT   `json:"weight,omitempty validate:"required_if=Type SRV""`
+	Port      SINT   `json:"port,omitempty validate:"required_if=Type SRV""`
+	Protocol  string `json:"protocol,omitempty" validate:"required_if=Type SRV"`
+	Service   string `json:"service,omitempty" validate:"required_if=Type SRV"`
+	Target    string `json:"target,omitempty" validate:"required_if=Type SRV"`
+	SPFRules  string `json:"spfRules,omitempty" validate:"omitempty,min=1"`
 }
 
 type SINT string
