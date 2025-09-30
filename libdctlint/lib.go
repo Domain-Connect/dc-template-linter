@@ -41,7 +41,7 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitv
 	var template internal.Template
 	err := decoder.Decode(&template)
 	if err != nil {
-		conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("a")
+		conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 		return template, exitvals.CheckFatal
 	}
 	exitVal := conf.checkTemplate(template)
@@ -181,7 +181,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		// Convert to json
 		marshaled, err := json.Marshal(template)
 		if err != nil {
-			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("b")
+			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 			return exitVal | exitvals.CheckError
 		}
 
@@ -189,7 +189,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		var out bytes.Buffer
 		err = json.Indent(&out, marshaled, "", "    ")
 		if err != nil {
-			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("c")
+			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 			return exitVal | exitvals.CheckError
 		}
 		_, err = fmt.Fprintf(&out, "\n")
