@@ -41,9 +41,9 @@ type Record struct {
 	Data      string `json:"data,omitempty" validate:"required_if=Type TXT"`
 	TxtCMM    string `json:"txtConflictMatchingMode,omitempty" validate:"omitempty,oneof=None All Prefix"`
 	TxtCMP    string `json:"txtConflictMatchingPrefix,omitempty" validate:"omitempty"`
-	Priority  SINT   `json:"priority,omitempty validate:"required_if=Type SRV"`
-	Weight    SINT   `json:"weight,omitempty validate:"required_if=Type SRV""`
-	Port      SINT   `json:"port,omitempty validate:"required_if=Type SRV""`
+	Priority  SINT   `json:"priority,omitempty" validate:"required_if=Type SRV"`
+	Weight    SINT   `json:"weight,omitempty" validate:"required_if=Type SRV"`
+	Port      SINT   `json:"port,omitempty" validate:"required_if=Type SRV"`
 	Protocol  string `json:"protocol,omitempty" validate:"required_if=Type SRV"`
 	Service   string `json:"service,omitempty" validate:"required_if=Type SRV"`
 	Target    string `json:"target,omitempty" validate:"required_if=Type SRV"`
