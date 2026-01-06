@@ -187,7 +187,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 
 		// Make output pretty
 		var out bytes.Buffer
-		err = json.Indent(&out, marshaled, "", "    ")
+		err = json.Indent(&out, marshaled, "", strings.Repeat(" ", int(conf.indent)))
 		if err != nil {
 			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
 			return exitVal | exitvals.CheckError

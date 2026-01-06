@@ -18,6 +18,7 @@ type Conf struct {
 	increment   bool
 	prettyPrint bool
 	ttl         uint32
+	indent      uint
 }
 
 // NewConf will create template check configuration.
@@ -49,6 +50,11 @@ func (c *Conf) SetCloudflare(b bool) *Conf {
 
 func (c *Conf) SetInplace(b bool) *Conf {
 	c.inplace = b
+	return c
+}
+
+func (c *Conf) SetIndent(i uint) *Conf {
+	c.indent = i
 	return c
 }
 

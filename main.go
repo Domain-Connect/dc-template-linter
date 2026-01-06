@@ -49,6 +49,7 @@ func main() {
 	checkLogos := flag.Bool("logos", false, "check logo urls are reachable (requires network)")
 	cloudflare := flag.Bool("cloudflare", false, "use Cloudflare specific template rules")
 	inplace := flag.Bool("inplace", false, "inplace write back pretty-print")
+	indent := flag.Uint("indent", 4, "number of spaces in an indent step of the pretty json")
 	increment := flag.Bool("increment", false, "increment template version, useful when pretty-printing")
 	prettyPrint := flag.Bool("pretty", false, "pretty-print template json")
 	loglevel := flag.String("loglevel", "info", "loglevel can be one of: panic fatal error warn info debug trace")
@@ -73,9 +74,14 @@ func main() {
 		log.Fatal().Uint("ttl", *ttl).Uint("max", libdctlint.MaxTTL).EmbedObject(internal.DCTL1000).Msg("")
 	}
 
+	if 255 < *indent {
+		log.Fatal().Uint("indent", *indent).Msg("too large indent")
+	}
+
 	conf := libdctlint.NewConf().
 		SetCheckLogos(*checkLogos).
 		SetPrettyPrint(*prettyPrint).
+		SetIndent(*indent).
 		SetCloudflare(*cloudflare)
 
 	if flag.NArg() < 1 {
