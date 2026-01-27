@@ -142,6 +142,10 @@ func (conf *Conf) checkRecord(
 	// Check use of underscore host names.
 	exitVal |= conf.checkUnderscoreNames(record.Type, record.Host)
 
+	if checkHostForDeniedChars(record.Host) {
+		rlog.Error().Str("host", record.Host).EmbedObject(internal.DCTL1027).Msg("")
+	}
+
 	// The spec does not tell type cannot be variable, but if/when it is
 	// reasoning about effects of applying a template becomes quite hard
 	// if not impossible. Without dubt a variable type will cascade need
@@ -189,6 +193,22 @@ func (conf *Conf) checkRecord(
 	exitVal |= findInvalidTemplateStrings(record, rlog)
 
 	return exitVal
+}
+
+func checkHostForDeniedChars(host string) bool {
+	if host == "*" || host == "@" {
+		return false
+	}
+	for _, c := range host {
+		switch c {
+		case '.', '%':
+			continue
+		}
+		if isDenied(c) {
+			return true
+		}
+	}
+	return false
 }
 
 func isInvalidProtocol(proto string) bool {
