@@ -155,6 +155,11 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		exitVal |= exitvals.CheckWarn
 	}
 
+	if template.WarnPhishing && template.SyncPubKeyDomain != "" {
+		conf.tlog.Info().EmbedObject(internal.DCTL1028).Msg("")
+		exitVal |= exitvals.CheckInfo
+	}
+
 	// DNS provider specific checks
 	if conf.cloudflare {
 		conf.tlog.Debug().Msg("performing Cloudflare checks")

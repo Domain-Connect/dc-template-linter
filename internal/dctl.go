@@ -54,6 +54,7 @@ const (
 	DCTL1025 DCTL = 1025
 	DCTL1026 DCTL = 1026
 	DCTL1027 DCTL = 1027
+	DCTL1028 DCTL = 1028
 
 	DCTL5000 DCTL = 5000
 	DCTL5001 DCTL = 5001
@@ -111,6 +112,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1025: "use of underscore detected in a host: element",
 	DCTL1026: "syncRedirectDomain must be a comma separated values without whitespaces",
 	DCTL1027: "record host contains illegal character(s)",
+	DCTL1028: "warnPhishing together with syncPubKeyDomain has no practical relevance",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",
