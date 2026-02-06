@@ -3,13 +3,13 @@ package libdctlint
 import (
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
 
 	"github.com/rs/zerolog"
-	"golang.org/x/exp/slices"
 )
 
 const strCNAME = "CNAME"

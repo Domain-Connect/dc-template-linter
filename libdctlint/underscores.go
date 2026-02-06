@@ -1,12 +1,11 @@
 package libdctlint
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
-
-	"golang.org/x/exp/slices"
 )
 
 const (
