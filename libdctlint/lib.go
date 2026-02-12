@@ -172,6 +172,10 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	}
 
 	// Template records checks
+	if len(template.Records) == 0 {
+		conf.tlog.Error().EmbedObject(internal.DCTL1030).Msg("")
+		exitVal |= exitvals.CheckError
+	}
 	conflictingTypes := make(map[string]string)
 	conf.duplicates = make(map[uint64]bool)
 	for rnum, record := range template.Records {

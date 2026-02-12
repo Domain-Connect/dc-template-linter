@@ -56,6 +56,7 @@ const (
 	DCTL1027 DCTL = 1027
 	DCTL1028 DCTL = 1028
 	DCTL1029 DCTL = 1029
+	DCTL1030 DCTL = 1030
 
 	DCTL5000 DCTL = 5000
 	DCTL5001 DCTL = 5001
@@ -115,6 +116,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1027: "record host contains illegal character(s)",
 	DCTL1028: "warnPhishing together with syncPubKeyDomain has no practical relevance",
 	DCTL1029: "syncPubKeyDomain not defined while syncBlock give impression it should be",
+	DCTL1030: "template does not have any records",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",
