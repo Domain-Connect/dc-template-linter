@@ -178,9 +178,25 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	}
 	conflictingTypes := make(map[string]string)
 	conf.duplicates = make(map[uint64]bool)
+	groupIdTrack := make(map[string]struct{})
 	for rnum, record := range template.Records {
 		exitVal |= conf.checkRecord(template, rnum, &record, conflictingTypes)
 		template.Records[rnum] = record
+		groupIdTrack[record.GroupID] = struct{}{}
+	}
+
+	// Is the same groupId defined for all records. No groupId is fine
+	if len(groupIdTrack) == 1 {
+		_, isEmpty := groupIdTrack[""]
+		if !isEmpty {
+			for groupId := range groupIdTrack {
+				conf.tlog.Info().Str("groupId", groupId).EmbedObject(internal.DCTL1031).Msg("")
+			}
+		}
+	} else {
+		if _, isEmpty := groupIdTrack[""]; isEmpty {
+			conf.tlog.Info().EmbedObject(internal.DCTL1032).Msg("")
+		}
 	}
 
 	// Pretty printing and/or inplace write output
