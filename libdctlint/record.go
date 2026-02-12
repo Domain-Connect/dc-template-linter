@@ -82,6 +82,14 @@ func (conf *Conf) checkRecord(
 			exitVal |= exitvals.CheckInfo
 		}
 
+	case "CAA":
+		if record.Host == "" {
+			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
+			exitVal |= exitvals.CheckError
+		}
+		// Validate CAA data string conforms to RFC 8659
+		exitVal |= checkCAA(record.Data, rlog)
+
 	case "MX":
 		if record.Host == "" {
 			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
@@ -350,6 +358,100 @@ func checkSPFRules(rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
 			rlog.Error().Str("modifier", field).EmbedObject(internal.DCTL1017).Msg("")
 			exitVal |= exitvals.CheckError
 		}
+	}
+
+	return exitVal
+}
+
+func checkCAA(data string, rlog zerolog.Logger) exitvals.CheckSeverity {
+	exitVal := exitvals.CheckOK
+
+	// check data is not empty
+	d := strings.TrimSpace(data)
+	if d == "" {
+		rlog.Error().Str("data", data).EmbedObject(internal.DCTL1015).Msg("")
+		return exitvals.CheckError
+	}
+	if isVariable(d) {
+		return exitvals.CheckOK
+	}
+
+	// Split into fields: expect at least flags, tag and value
+	fields := strings.Fields(d)
+	if len(fields) < 3 {
+		rlog.Error().Str("data", data).EmbedObject(internal.DCTL1015).Msg("")
+		return exitvals.CheckError
+	}
+
+	// Validate flags (fields[0]) as unsigned integer 0..255
+	flags := fields[0]
+	if len(flags) == 0 {
+		rlog.Error().Str("flags", flags).EmbedObject(internal.DCTL1015).Msg("")
+		return exitvals.CheckError
+	}
+	var f uint64
+	for i := 0; i < len(flags); i++ {
+		if flags[i] < '0' || flags[i] > '9' {
+			rlog.Error().Str("flags", flags).EmbedObject(internal.DCTL1015).Msg("")
+			return exitvals.CheckError
+		}
+		f = f*10 + uint64(flags[i]-'0')
+		if f > 255 {
+			rlog.Error().Str("flags", flags).EmbedObject(internal.DCTL1015).Msg("")
+			return exitvals.CheckError
+		}
+	}
+
+	// Validate tag (fields[1])
+	tag := fields[1]
+	if tag == "" || strings.ToLower(tag) != tag || !regexp.MustCompile(`^[a-z0-9]+$`).MatchString(tag) {
+		rlog.Error().Str("tag", tag).EmbedObject(internal.DCTL1015).Msg("")
+		exitVal |= exitvals.CheckError
+	}
+
+	// Extract value as remaining fields
+	valueParts := fields[2:]
+	if len(valueParts) == 0 {
+		rlog.Error().Str("data", data).EmbedObject(internal.DCTL1015).Msg("")
+		return exitvals.CheckError
+	}
+	value := strings.Join(valueParts, " ")
+
+	// Value must be wrapped in double quotes; reject if not
+	if !(len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"') {
+		rlog.Error().Str("data", data).EmbedObject(internal.DCTL1015).Msg("")
+		exitVal |= exitvals.CheckError
+		return exitVal
+	}
+	value = strings.TrimSpace(value[1 : len(value)-1])
+
+	// Validate value not empty
+	if value == "" {
+		rlog.Error().Str("data", data).EmbedObject(internal.DCTL1015).Msg("")
+		exitVal |= exitvals.CheckError
+		return exitVal
+	}
+
+	// Minimal semantic checks for common tags
+	switch tag {
+	case "issue", "issuewild":
+		// Allow wildcard '*' or a domain, optionally followed by parameters after ';'
+		main := value
+		if i := strings.IndexByte(main, ';'); i != -1 {
+			main = strings.TrimSpace(main[:i])
+		}
+		if main == "" {
+			rlog.Error().Str("data", data).EmbedObject(internal.DCTL1015).Msg("")
+			exitVal |= exitvals.CheckError
+		}
+	case "iodef":
+		v := strings.ToLower(value)
+		if !(strings.HasPrefix(v, "mailto:") || strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://")) {
+			rlog.Error().Str("data", data).EmbedObject(internal.DCTL1015).Msg("")
+			exitVal |= exitvals.CheckError
+		}
+	default:
+		// Unknown tags are allowed by RFC but must be lowercase token; already validated.
 	}
 
 	return exitVal
