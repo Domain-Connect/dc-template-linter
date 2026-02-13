@@ -1,9 +1,9 @@
 #!/bin/sh
 
-cat <<EOF >|./version.go
-package main
+cat <<EOF >|./internal/version.go
+package internal
 
-const dcTemplateLinterVersion uint = $(git rev-list --count b4cfffd..)
+const ProjectVersion uint = $(git rev-list --count b4cfffd..)
 EOF
 
 exit $?

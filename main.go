@@ -60,7 +60,7 @@ func main() {
 
 	// Did user want to know version
 	if *version {
-		_, _ = fmt.Printf("dc-template-linter version %d\n", dcTemplateLinterVersion)
+		_, _ = fmt.Printf("dc-template-linter version %d\n", internal.ProjectVersion)
 		os.Exit(0)
 	}
 
@@ -68,7 +68,7 @@ func main() {
 	internal.SetLoglevel(*loglevel)
 	exitVal := exitvals.CheckOK
 
-	log.Debug().Uint("version", dcTemplateLinterVersion).Msg("dc-template-linter version")
+	log.Debug().Uint("version", internal.ProjectVersion).Msg("dc-template-linter version")
 
 	if libdctlint.MaxTTL < *ttl {
 		log.Fatal().Uint("ttl", *ttl).Uint("max", libdctlint.MaxTTL).EmbedObject(internal.DCTL1000).Msg("")
