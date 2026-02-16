@@ -1,3 +1,3 @@
 package internal
 
-const ProjectVersion uint = 97
+const ProjectVersion uint = 98
