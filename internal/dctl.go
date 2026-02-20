@@ -117,7 +117,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1026: "syncRedirectDomain must be a comma separated values without whitespaces",
 	DCTL1027: "record host contains illegal character(s)",
 	DCTL1028: "warnPhishing together with syncPubKeyDomain has no practical relevance",
-	DCTL1029: "syncPubKeyDomain not defined while syncBlock give impression it should be",
+	DCTL1029: "template does not have syncPubKeyDomain",
 	DCTL1030: "template does not have any records",
 	DCTL1031: "all record groupId values are the same",
 	DCTL1032: "mix of defined empty and record groupId values",
