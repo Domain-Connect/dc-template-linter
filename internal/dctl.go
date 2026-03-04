@@ -120,7 +120,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1029: "template does not have syncPubKeyDomain",
 	DCTL1030: "template does not have any records",
 	DCTL1031: "all record groupId values are the same",
-	DCTL1032: "mix of defined empty and record groupId values",
+	DCTL1032: "mix of empty and defined record groupId values",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",
