@@ -59,6 +59,7 @@ const (
 	DCTL1030 DCTL = 1030
 	DCTL1031 DCTL = 1031
 	DCTL1032 DCTL = 1032
+	DCTL1033 DCTL = 1033
 
 	DCTL5000 DCTL = 5000
 	DCTL5001 DCTL = 5001
@@ -121,6 +122,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1030: "template does not have any records",
 	DCTL1031: "all record groupId values are the same",
 	DCTL1032: "mix of empty and defined record groupId values",
+	DCTL1033: "multiInstance with CNAME on @ does not make sense",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",

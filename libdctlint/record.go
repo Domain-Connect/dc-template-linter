@@ -23,7 +23,7 @@ func (conf *Conf) checkRecord(
 ) exitvals.CheckSeverity {
 	// A record specific init
 	exitVal := exitvals.CheckOK
-	rlog := conf.tlog.With().Str("groupid", record.GroupID).Int("record", rnum + 1).Str("type", record.Type).Logger()
+	rlog := conf.tlog.With().Str("groupid", record.GroupID).Int("record", rnum+1).Str("type", record.Type).Logger()
 	rlog.Debug().Str("host", record.Host).Msg("check record")
 
 	exitVal |= conf.findDuplicates(record, rlog)
@@ -42,6 +42,10 @@ func (conf *Conf) checkRecord(
 	switch record.Type {
 	case strCNAME, "NS":
 		if record.Host == "@" {
+			if template.MultiInstance && record.Type != "NS" {
+				rlog.Warn().EmbedObject(internal.DCTL1033).Msg("")
+				exitVal |= exitvals.CheckWarn
+			}
 			if conf.cloudflare {
 				rlog.Info().EmbedObject(internal.DCTL5007).Msg("")
 				exitVal |= exitvals.CheckInfo
