@@ -147,17 +147,17 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 
 	if err := checkFQDN(template.SyncPubKeyDomain); err != nil {
 		conf.tlog.Error().Err(err).Str("SyncPubKeyDomain", template.SyncPubKeyDomain).EmbedObject(internal.DCTL1022).Msg("")
-		exitVal |= exitvals.CheckWarn
+		exitVal |= exitvals.CheckError
 	}
 
 	if err := conf.checkSyncRedirectDomain(template.SyncRedirectDomain); err != nil {
 		conf.tlog.Error().Err(err).Str("SyncRedirectDomain", template.SyncRedirectDomain).EmbedObject(internal.DCTL1022).Msg("")
-		exitVal |= exitvals.CheckWarn
+		exitVal |= exitvals.CheckError
 	}
 
 	if template.WarnPhishing && template.SyncPubKeyDomain != "" {
-		conf.tlog.Info().EmbedObject(internal.DCTL1028).Msg("")
-		exitVal |= exitvals.CheckInfo
+		conf.tlog.Error().EmbedObject(internal.DCTL1028).Msg("")
+		exitVal |= exitvals.CheckError
 	}
 
 	if !template.SyncBlock && template.SyncPubKeyDomain == "" {

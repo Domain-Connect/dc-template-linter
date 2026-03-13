@@ -117,7 +117,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1025: "use of underscore detected in a host: element",
 	DCTL1026: "syncRedirectDomain must be a comma separated values without whitespaces",
 	DCTL1027: "record host contains illegal character(s)",
-	DCTL1028: "warnPhishing together with syncPubKeyDomain has no practical relevance",
+	DCTL1028: "warnPhishing and syncPubKeyDomain are mutually exclusive",
 	DCTL1029: "template does not have syncPubKeyDomain",
 	DCTL1030: "template does not have any records",
 	DCTL1031: "all record groupId values are the same",
