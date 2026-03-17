@@ -1,6 +1,7 @@
 package libdctlint
 
 import (
+	"net"
 	"reflect"
 	"regexp"
 	"slices"
@@ -54,13 +55,32 @@ func (conf *Conf) checkRecord(
 				exitVal |= exitvals.CheckError
 			}
 		}
-		fallthrough
-	case "A", "AAAA":
 		if record.Host == "" {
 			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
 			exitVal |= exitvals.CheckError
 		}
 		exitVal |= targetCheck(record, "pointsTo", rlog)
+	case "A", "AAAA":
+		if record.Host == "" {
+			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
+			exitVal |= exitvals.CheckError
+		}
+		if !isVariable(record.PointsTo) {
+			ip := net.ParseIP(record.PointsTo)
+			if ip == nil {
+				rlog.Error().Str("pointsTo", record.PointsTo).EmbedObject(internal.DCTL1034).Msg("")
+				exitVal |= exitvals.CheckError
+			} else {
+				if record.Type == "A" && ip.To4() == nil {
+					rlog.Error().Str("pointsTo", record.PointsTo).EmbedObject(internal.DCTL1035).Msg("")
+					exitVal |= exitvals.CheckError
+				}
+				if record.Type == "AAAA" && ip.To4() != nil {
+					rlog.Error().Str("pointsTo", record.PointsTo).EmbedObject(internal.DCTL1036).Msg("")
+					exitVal |= exitvals.CheckError
+				}
+			}
+		}
 
 	case "TXT":
 		if record.Host == "" {

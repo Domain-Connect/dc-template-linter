@@ -60,6 +60,9 @@ const (
 	DCTL1031 DCTL = 1031
 	DCTL1032 DCTL = 1032
 	DCTL1033 DCTL = 1033
+	DCTL1034 DCTL = 1034
+	DCTL1035 DCTL = 1035
+	DCTL1036 DCTL = 1036
 
 	DCTL5000 DCTL = 5000
 	DCTL5001 DCTL = 5001
@@ -123,6 +126,9 @@ var dctlToString = map[DCTL]string{
 	DCTL1031: "all record groupId values are the same",
 	DCTL1032: "mix of empty and defined record groupId values",
 	DCTL1033: "multiInstance with CNAME on @ does not make sense",
+	DCTL1034: "address record must point to a valid IP or a variable",
+	DCTL1035: "A record points to IPv6 address",
+	DCTL1036: "AAAA record points to IPv4 address",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",
