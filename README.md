@@ -31,6 +31,8 @@ Usage: dc-template-linter [options] <template.json> [...]
 	use Cloudflare specific template rules
   -increment
 	increment template version, useful when pretty-printing
+  -indent uint
+	number of spaces in an indent step of the pretty json (default 4)
   -inplace
 	inplace write back pretty-print
   -loglevel string
