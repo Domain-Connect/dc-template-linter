@@ -149,8 +149,8 @@ func (conf *Conf) checkRecord(
 
 	case "APEXCNAME":
 		if conf.cloudflare {
-			rlog.Info().EmbedObject(internal.DCTL5009).Msg("")
-			exitVal |= exitvals.CheckInfo
+			rlog.Error().EmbedObject(internal.DCTL5009).Msg("")
+			exitVal |= exitvals.CheckError
 		}
 
 	case "REDIR301", "REDIR302":
