@@ -30,6 +30,11 @@ const (
 	max31b = 1<<31 - 1
 )
 
+// ProjectVersion returns the dc-template-linter project version number.
+func ProjectVersion() uint {
+        return uint(internal.ProjectVersion)
+}
+
 // captureWriter is a zerolog-compatible io.Writer that parses each JSON log
 // line emitted in library mode and appends it to conf.messages when it
 // contains a DCTL code field.
