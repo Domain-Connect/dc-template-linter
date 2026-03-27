@@ -1,8 +1,8 @@
 // Package libdctlint provides a library to check/lint Domain Connect
 // service provider template.
 //
-// Check results are communicated to humans with zerolog messages, that one
-// is recommended to configure in software calling this library.
+// Check results are communicated via zerolog messages in interactive mode,
+// or via a DCTLMessage list when library mode is active (SetLib(true)).
 package libdctlint
 
 import (
@@ -21,6 +21,7 @@ import (
 
 	gonet "github.com/THREATINT/go-net"
 	"github.com/go-playground/validator/v10"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,10 +30,62 @@ const (
 	max31b = 1<<31 - 1
 )
 
+// captureWriter is a zerolog-compatible io.Writer that parses each JSON log
+// line emitted in library mode and appends it to conf.messages when it
+// contains a DCTL code field.
+type captureWriter struct {
+	conf *Conf
+}
+
+func (cw *captureWriter) Write(p []byte) (int, error) {
+	var parsed struct {
+		Code  string `json:"code"`
+		Level string `json:"level"`
+	}
+	msg := strings.TrimRight(string(p), "\n")
+	if json.Unmarshal(p, &parsed) == nil && parsed.Code != "" {
+		var code uint16
+		if _, err := fmt.Sscanf(parsed.Code, "DCTL%04d", &code); err == nil {
+			level, _ := zerolog.ParseLevel(parsed.Level)
+			cw.conf.messages = append(cw.conf.messages, DCTLMessage{
+				Code:    internal.DCTL(code),
+				Level:   level,
+				Message: msg,
+			})
+		}
+	}
+	return len(p), nil
+}
+
+// emit logs the given DCTL code at its defined level using logger and returns
+// the corresponding exitvals.CheckSeverity bit for the caller to OR into its
+// local exitVal. fn may be nil or a function that adds extra fields to the
+// zerolog event before it is dispatched.
+//
+// In library mode the event is written to the captureWriter (set up by
+// GetAndCheckTemplate) so it is stored in conf.messages; no output reaches
+// the zerolog global logger.
+func (conf *Conf) emit(logger zerolog.Logger, dctl internal.DCTL, fn func(*zerolog.Event) *zerolog.Event) exitvals.CheckSeverity {
+	e := logger.WithLevel(dctl.Level())
+	if fn != nil {
+		e = fn(e)
+	}
+	e.EmbedObject(dctl).Msg("")
+	return dctl.Severity()
+}
+
 // GetAndCheckTemplate is used in dctweb. Do not use applications
 // outside of this project.
 func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitvals.CheckSeverity) {
-	conf.SetLogger(log.With().Str("template", conf.fileName).Logger())
+	// Reset per-call message list
+	conf.messages = nil
+
+	if conf.lib {
+		cw := &captureWriter{conf: conf}
+		conf.SetLogger(zerolog.New(cw).With().Str("template", conf.fileName).Logger())
+	} else {
+		conf.SetLogger(log.With().Str("template", conf.fileName).Logger())
+	}
 	conf.tlog.Debug().Msg("starting template check")
 
 	// Decode json
@@ -41,7 +94,9 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitv
 	var template internal.Template
 	err := decoder.Decode(&template)
 	if err != nil {
-		conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
+		conf.emit(conf.tlog, internal.DCTL0003, func(e *zerolog.Event) *zerolog.Event {
+			return e.Err(err)
+		})
 		return template, exitvals.CheckFatal
 	}
 	exitVal := conf.checkTemplate(template)
@@ -52,6 +107,9 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitv
 // checks according to the Conf configuration. Please remember to
 // set conf.fileName appropriately before calling this function to avoid
 // confusing results.
+//
+// In library mode (SetLib(true)) all DCTL messages are stored and accessible
+// via GetMessages() after this call returns.
 func (conf *Conf) CheckTemplate(f *bufio.Reader) exitvals.CheckSeverity {
 	// A single template check init
 	_, exitVal := conf.GetAndCheckTemplate(f)
@@ -62,30 +120,31 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	exitVal := exitvals.CheckOK
 	// Ensure ID fields use valid characters
 	if checkInvalidChars(template.ProviderID) {
-		conf.tlog.Error().Str("providerId", template.ProviderID).EmbedObject(internal.DCTL1002).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1002, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("providerId", template.ProviderID)
+		})
 	}
 	if checkInvalidChars(template.ServiceID) {
-		conf.tlog.Error().Str("serviceId", template.ServiceID).EmbedObject(internal.DCTL1002).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1002, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("serviceId", template.ServiceID)
+		})
 	}
 
 	// Check 6.11.2. File naming requirements
 	if conf.fileName != "/dev/stdin" {
 		expected := strings.ToLower(template.ProviderID) + "." + strings.ToLower(template.ServiceID) + ".json"
 		if filepath.Base(conf.fileName) != expected {
-			conf.tlog.Error().Str("expected", expected).EmbedObject(internal.DCTL1003).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(conf.tlog, internal.DCTL1003, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("expected", expected)
+			})
 		}
 	}
 
 	// Detect ID collisions _across multiple_ templates
 	if _, found := conf.collision[template.ProviderID+"/"+template.ServiceID]; found {
-		conf.tlog.Error().
-			Str("providerId", template.ProviderID).
-			Str("serviceId", template.ServiceID).
-			EmbedObject(internal.DCTL1004).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1004, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("providerId", template.ProviderID).Str("serviceId", template.ServiceID)
+		})
 	}
 	conf.collision[template.ProviderID+"/"+template.ServiceID] = true
 
@@ -93,9 +152,11 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(template)
 	if err != nil {
-		for _, err := range err.(validator.ValidationErrors) {
-			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL1005).Msg("")
-			exitVal |= exitvals.CheckError
+		for _, verr := range err.(validator.ValidationErrors) {
+			verr := verr // capture loop var
+			exitVal |= conf.emit(conf.tlog, internal.DCTL1005, func(e *zerolog.Event) *zerolog.Event {
+				return e.Err(verr)
+			})
 		}
 	}
 
@@ -103,66 +164,68 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	for _, record := range template.Records {
 		err := validate.Struct(record)
 		if err != nil {
-			for _, err := range err.(validator.ValidationErrors) {
-				conf.tlog.Error().Err(err).EmbedObject(internal.DCTL1005).Msg("")
-				exitVal |= exitvals.CheckError
+			for _, verr := range err.(validator.ValidationErrors) {
+				verr := verr
+				exitVal |= conf.emit(conf.tlog, internal.DCTL1005, func(e *zerolog.Event) *zerolog.Event {
+					return e.Err(verr)
+				})
 			}
 		}
 	}
 
 	// Field checks provided by this file
 	if template.Version == 0 {
-		conf.tlog.Info().EmbedObject(internal.DCTL1006).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1006, nil)
 	}
 	if template.Shared && !template.SharedProviderName {
-		conf.tlog.Error().EmbedObject(internal.DCTL1007).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1007, nil)
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
 	}
 	if !template.Shared && template.SharedProviderName {
-		conf.tlog.Info().EmbedObject(internal.DCTL1008).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1008, nil)
 		// Override to ensure settings in pretty-print output are correct
 		template.Shared = true
 		template.SharedProviderName = true
 	}
 
 	if isVariable(template.ProviderName) {
-		conf.tlog.Error().Str("providerName", template.ProviderName).EmbedObject(internal.DCTL1009).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1009, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("providerName", template.ProviderName)
+		})
 	}
 	if isVariable(template.ServiceName) {
-		conf.tlog.Error().Str("serviceName", template.ServiceName).EmbedObject(internal.DCTL1009).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1009, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("serviceName", template.ServiceName)
+		})
 	}
 
 	// Logo url reachability check
 	if err := conf.isUnreachable(template.Logo); err != nil {
-		conf.tlog.Warn().Err(err).Str("logoUrl", template.Logo).EmbedObject(internal.DCTL1010).Msg("")
-		exitVal |= exitvals.CheckWarn
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1010, func(e *zerolog.Event) *zerolog.Event {
+			return e.Err(err).Str("logoUrl", template.Logo)
+		})
 	}
 
 	if err := checkFQDN(template.SyncPubKeyDomain); err != nil {
-		conf.tlog.Error().Err(err).Str("SyncPubKeyDomain", template.SyncPubKeyDomain).EmbedObject(internal.DCTL1022).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1022, func(e *zerolog.Event) *zerolog.Event {
+			return e.Err(err).Str("SyncPubKeyDomain", template.SyncPubKeyDomain)
+		})
 	}
 
 	if err := conf.checkSyncRedirectDomain(template.SyncRedirectDomain); err != nil {
-		conf.tlog.Error().Err(err).Str("SyncRedirectDomain", template.SyncRedirectDomain).EmbedObject(internal.DCTL1022).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1022, func(e *zerolog.Event) *zerolog.Event {
+			return e.Err(err).Str("SyncRedirectDomain", template.SyncRedirectDomain)
+		})
 	}
 
 	if template.WarnPhishing && template.SyncPubKeyDomain != "" {
-		conf.tlog.Error().EmbedObject(internal.DCTL1028).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1028, nil)
 	}
 
 	if !template.SyncBlock && template.SyncPubKeyDomain == "" {
-		conf.tlog.Info().EmbedObject(internal.DCTL1029).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1029, nil)
 	}
 
 	// DNS provider specific checks
@@ -173,8 +236,7 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 
 	// Template records checks
 	if len(template.Records) == 0 {
-		conf.tlog.Error().EmbedObject(internal.DCTL1030).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1030, nil)
 	}
 	conflictingTypes := make(map[string]string)
 	conf.duplicates = make(map[uint64]bool)
@@ -190,12 +252,14 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		_, isEmpty := groupIdTrack[""]
 		if !isEmpty {
 			for groupId := range groupIdTrack {
-				conf.tlog.Info().Str("groupId", groupId).EmbedObject(internal.DCTL1031).Msg("")
+				exitVal |= conf.emit(conf.tlog, internal.DCTL1031, func(e *zerolog.Event) *zerolog.Event {
+					return e.Str("groupId", groupId)
+				})
 			}
 		}
 	} else {
 		if _, isEmpty := groupIdTrack[""]; isEmpty {
-			conf.tlog.Info().EmbedObject(internal.DCTL1032).Msg("")
+			exitVal |= conf.emit(conf.tlog, internal.DCTL1032, nil)
 		}
 	}
 
@@ -211,7 +275,9 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		// Convert to json
 		marshaled, err := json.Marshal(template)
 		if err != nil {
-			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
+			conf.emit(conf.tlog, internal.DCTL0003, func(e *zerolog.Event) *zerolog.Event {
+				return e.Err(err)
+			})
 			return exitVal | exitvals.CheckError
 		}
 
@@ -219,7 +285,9 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		var out bytes.Buffer
 		err = json.Indent(&out, marshaled, "", strings.Repeat(" ", int(conf.indent)))
 		if err != nil {
-			conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0003).Msg("")
+			conf.emit(conf.tlog, internal.DCTL0003, func(e *zerolog.Event) *zerolog.Event {
+				return e.Err(err)
+			})
 			return exitVal | exitvals.CheckError
 		}
 		_, err = fmt.Fprintf(&out, "\n")
@@ -234,7 +302,9 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		} else {
 			_, err = out.WriteTo(os.Stdout)
 			if err != nil {
-				conf.tlog.Error().Err(err).EmbedObject(internal.DCTL0004).Msg("")
+				conf.emit(conf.tlog, internal.DCTL0004, func(e *zerolog.Event) *zerolog.Event {
+					return e.Err(err)
+				})
 				exitVal |= exitvals.CheckError
 			}
 		}
@@ -274,7 +344,9 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	// Create temporary file
 	outfile, err := os.CreateTemp("./", path.Base(conf.fileName))
 	if err != nil {
-		conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL0005).Msg("")
+		conf.emit(conf.tlog, internal.DCTL0005, func(e *zerolog.Event) *zerolog.Event {
+			return e.Err(err)
+		})
 		return exitvals.CheckError
 	}
 	defer func() {
@@ -288,7 +360,9 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	writer := bufio.NewWriter(outfile)
 	_, err = out.WriteTo(writer)
 	if err != nil {
-		conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL0004).Msg("")
+		conf.emit(conf.tlog, internal.DCTL0004, func(e *zerolog.Event) *zerolog.Event {
+			return e.Err(err)
+		})
 		return exitvals.CheckError
 	}
 	err = writer.Flush()
@@ -300,7 +374,9 @@ func (conf *Conf) writeBack(out bytes.Buffer) exitvals.CheckSeverity {
 	// Move temporary file where the original file is
 	err = os.Rename(outfile.Name(), conf.fileName)
 	if err != nil {
-		conf.tlog.Warn().Err(err).EmbedObject(internal.DCTL0006).Msg("")
+		conf.emit(conf.tlog, internal.DCTL0006, func(e *zerolog.Event) *zerolog.Event {
+			return e.Err(err)
+		})
 		return exitvals.CheckWarn
 	}
 	conf.tlog.Debug().Str("tmpfile", outfile.Name()).Msg("updated")
@@ -316,7 +392,9 @@ func (conf *Conf) checkSyncRedirectDomain(srd string) (err error) {
 	for i := range srdList {
 		trimmed := strings.TrimSpace(srdList[i])
 		if trimmed != srdList[i] {
-			conf.tlog.Warn().Str("domain", srdList[i]).EmbedObject(internal.DCTL1026).Msg("")
+			conf.emit(conf.tlog, internal.DCTL1026, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("domain", srdList[i])
+			})
 		}
 		e := checkFQDN(trimmed)
 		if e != nil && err == nil {
@@ -345,32 +423,25 @@ func checkFQDN(fqdn string) error {
 func (conf *Conf) cloudflareTemplateChecks(template internal.Template) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 	if template.SyncBlock {
-		conf.tlog.Error().EmbedObject(internal.DCTL5000).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL5000, nil)
 	}
 	if template.SyncPubKeyDomain == "" {
-		conf.tlog.Error().EmbedObject(internal.DCTL5001).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(conf.tlog, internal.DCTL5001, nil)
 	}
 	if template.SharedServiceName {
-		conf.tlog.Info().EmbedObject(internal.DCTL5002).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(conf.tlog, internal.DCTL5002, nil)
 	}
 	if template.SyncRedirectDomain != "" {
-		conf.tlog.Info().EmbedObject(internal.DCTL5003).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(conf.tlog, internal.DCTL5003, nil)
 	}
 	if template.MultiInstance {
-		conf.tlog.Info().EmbedObject(internal.DCTL5004).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(conf.tlog, internal.DCTL5004, nil)
 	}
 	if template.WarnPhishing {
-		conf.tlog.Info().EmbedObject(internal.DCTL5005).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(conf.tlog, internal.DCTL5005, nil)
 	}
 	if template.HostRequired {
-		conf.tlog.Info().EmbedObject(internal.DCTL5006).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(conf.tlog, internal.DCTL5006, nil)
 	}
 	return exitVal
 }

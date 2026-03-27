@@ -25,8 +25,9 @@ func (conf *Conf) findDuplicates(record *internal.Record, rlog zerolog.Logger) e
 	_, found := conf.duplicates[checkSum]
 
 	if found {
-		rlog.Warn().Uint64("checksum", checkSum).EmbedObject(internal.DCTL1023).Msg("")
-		return exitvals.CheckWarn
+		return conf.emit(rlog, internal.DCTL1023, func(e *zerolog.Event) *zerolog.Event {
+			return e.Uint64("checksum", checkSum)
+		})
 	}
 
 	conf.duplicates[checkSum] = true

@@ -4,6 +4,7 @@ package internal
 import (
 	"fmt"
 
+	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/rs/zerolog"
 )
 
@@ -143,6 +144,98 @@ var dctlToString = map[DCTL]string{
 	DCTL5009: "APEXCNAME is not supported",
 	DCTL5010: "zero ttl is not honoured",
 	DCTL5011: "essential is not supported",
+}
+
+// dctlLevel maps each DCTL code to its zerolog log level.
+// The level determines both the zerolog logging severity and the exitvals.CheckSeverity bit.
+var dctlLevel = map[DCTL]zerolog.Level{
+	// operating system and library errors
+	DCTL0001: zerolog.FatalLevel,
+	DCTL0002: zerolog.FatalLevel,
+	DCTL0003: zerolog.ErrorLevel,
+	DCTL0004: zerolog.ErrorLevel,
+	DCTL0005: zerolog.ErrorLevel,
+	DCTL0006: zerolog.WarnLevel,
+	DCTL0007: zerolog.ErrorLevel,
+	DCTL0008: zerolog.ErrorLevel,
+	DCTL0009: zerolog.InfoLevel,
+
+	// domain connect specific messages
+	DCTL1002: zerolog.ErrorLevel,
+	DCTL1003: zerolog.ErrorLevel,
+	DCTL1004: zerolog.ErrorLevel,
+	DCTL1005: zerolog.ErrorLevel,
+	DCTL1006: zerolog.InfoLevel,
+	DCTL1007: zerolog.ErrorLevel,
+	DCTL1008: zerolog.InfoLevel,
+	DCTL1009: zerolog.ErrorLevel,
+	DCTL1010: zerolog.WarnLevel,
+	DCTL1011: zerolog.ErrorLevel,
+	DCTL1012: zerolog.ErrorLevel,
+	DCTL1013: zerolog.ErrorLevel,
+	DCTL1014: zerolog.InfoLevel,
+	DCTL1015: zerolog.ErrorLevel,
+	DCTL1016: zerolog.InfoLevel,
+	DCTL1017: zerolog.ErrorLevel,
+	DCTL1018: zerolog.ErrorLevel,
+	DCTL1019: zerolog.WarnLevel,
+	DCTL1020: zerolog.ErrorLevel,
+	DCTL1021: zerolog.InfoLevel,
+	DCTL1022: zerolog.ErrorLevel,
+	DCTL1023: zerolog.WarnLevel,
+	DCTL1024: zerolog.InfoLevel,
+	DCTL1025: zerolog.InfoLevel,
+	DCTL1026: zerolog.WarnLevel,
+	DCTL1027: zerolog.ErrorLevel,
+	DCTL1028: zerolog.ErrorLevel,
+	DCTL1029: zerolog.InfoLevel,
+	DCTL1030: zerolog.ErrorLevel,
+	DCTL1031: zerolog.InfoLevel,
+	DCTL1032: zerolog.InfoLevel,
+	DCTL1033: zerolog.WarnLevel,
+	DCTL1034: zerolog.ErrorLevel,
+	DCTL1035: zerolog.ErrorLevel,
+	DCTL1036: zerolog.ErrorLevel,
+
+	// cloudflare messages
+	DCTL5000: zerolog.ErrorLevel,
+	DCTL5001: zerolog.ErrorLevel,
+	DCTL5002: zerolog.InfoLevel,
+	DCTL5003: zerolog.InfoLevel,
+	DCTL5004: zerolog.InfoLevel,
+	DCTL5005: zerolog.InfoLevel,
+	DCTL5006: zerolog.InfoLevel,
+	DCTL5007: zerolog.InfoLevel,
+	DCTL5008: zerolog.InfoLevel,
+	DCTL5009: zerolog.ErrorLevel,
+	DCTL5010: zerolog.InfoLevel,
+	DCTL5011: zerolog.InfoLevel,
+}
+
+// Level returns the zerolog.Level associated with this DCTL code.
+// Unknown codes default to ErrorLevel.
+func (dctl DCTL) Level() zerolog.Level {
+	if level, ok := dctlLevel[dctl]; ok {
+		return level
+	}
+	return zerolog.ErrorLevel
+}
+
+// Severity returns the exitvals.CheckSeverity bit that corresponds to this
+// DCTL code's log level.
+func (dctl DCTL) Severity() exitvals.CheckSeverity {
+	switch dctl.Level() {
+	case zerolog.DebugLevel, zerolog.TraceLevel:
+		return exitvals.CheckDebug
+	case zerolog.InfoLevel:
+		return exitvals.CheckInfo
+	case zerolog.WarnLevel:
+		return exitvals.CheckWarn
+	case zerolog.FatalLevel, zerolog.PanicLevel:
+		return exitvals.CheckFatal
+	default: // ErrorLevel
+		return exitvals.CheckError
+	}
 }
 
 func (dctl DCTL) MarshalZerologObject(e *zerolog.Event) {

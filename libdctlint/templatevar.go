@@ -9,17 +9,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func findInvalidTemplateStrings(record *internal.Record, rlog zerolog.Logger) exitvals.CheckSeverity {
+func findInvalidTemplateStrings(conf *Conf, record *internal.Record, rlog zerolog.Logger) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 
-	exitVal |= checkSingleString(record.Host, rlog)
-	exitVal |= checkSingleString(record.Name, rlog)
-	exitVal |= checkSingleString(record.PointsTo, rlog)
-	exitVal |= checkSingleString(record.Data, rlog)
-	exitVal |= checkSingleString(record.TxtCMP, rlog)
-	exitVal |= checkSingleString(record.Service, rlog)
-	exitVal |= checkSingleString(record.Target, rlog)
-	exitVal |= checkSingleString(record.SPFRules, rlog)
+	exitVal |= checkSingleString(conf, record.Host, rlog)
+	exitVal |= checkSingleString(conf, record.Name, rlog)
+	exitVal |= checkSingleString(conf, record.PointsTo, rlog)
+	exitVal |= checkSingleString(conf, record.Data, rlog)
+	exitVal |= checkSingleString(conf, record.TxtCMP, rlog)
+	exitVal |= checkSingleString(conf, record.Service, rlog)
+	exitVal |= checkSingleString(conf, record.Target, rlog)
+	exitVal |= checkSingleString(conf, record.SPFRules, rlog)
 
 	return exitVal
 }
@@ -47,7 +47,7 @@ func isDenied(needle rune) bool {
 	return true
 }
 
-func checkSingleString(input string, rlog zerolog.Logger) exitvals.CheckSeverity {
+func checkSingleString(conf *Conf, input string, rlog zerolog.Logger) exitvals.CheckSeverity {
 	withInVar := false
 
 	for _, c := range input {
@@ -57,20 +57,23 @@ func checkSingleString(input string, rlog zerolog.Logger) exitvals.CheckSeverity
 		}
 		if withInVar {
 			if isDenied(c) {
-				rlog.Warn().Str("invalid", input).EmbedObject(internal.DCTL1019).Msg("")
-				return exitvals.CheckWarn
+				return conf.emit(rlog, internal.DCTL1019, func(e *zerolog.Event) *zerolog.Event {
+					return e.Str("invalid", input)
+				})
 			}
 		}
 	}
 
 	if strings.Contains(input, "%host%") {
-		rlog.Info().Str("invalid", input).EmbedObject(internal.DCTL1024).Msg("")
-		return exitvals.CheckInfo
+		return conf.emit(rlog, internal.DCTL1024, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("invalid", input)
+		})
 	}
 
 	if withInVar {
-		rlog.Error().Str("invalid", input).EmbedObject(internal.DCTL1020).Msg("")
-		return exitvals.CheckError
+		return conf.emit(rlog, internal.DCTL1020, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("invalid", input)
+		})
 	}
 
 	return exitvals.CheckOK

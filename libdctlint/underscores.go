@@ -6,6 +6,8 @@ import (
 
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
+
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -93,8 +95,10 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) exitvals.CheckSeveri
 	for _, elem := range strings.Split(host, ".") {
 		location := strings.Index(elem, "_")
 		if location > 1 && isStaticLabelUnderscore(elem) {
-			rlog.Info().Str("host", elem).EmbedObject(internal.DCTL1025).Msg("")
-			exitVal |= exitvals.CheckInfo
+			elem := elem
+			exitVal |= conf.emit(rlog, internal.DCTL1025, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("host", elem)
+			})
 			continue
 		}
 
@@ -103,21 +107,27 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) exitvals.CheckSeveri
 		}
 		okTypes, ok := rfc8552[strings.ToLower(elem)]
 		if !ok {
-			rlog.Debug().Str("host", elem).EmbedObject(internal.DCTL1021).Msg("")
-			exitVal |= exitvals.CheckDebug
+			elem := elem
+			exitVal |= conf.emit(rlog, internal.DCTL1021, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("host", elem)
+			})
 			continue
 		}
 
 		templateType, ok := recordToType[strings.ToUpper(rrtype)]
 		if !ok {
-			rlog.Info().Str("host", elem).EmbedObject(internal.DCTL1021).Msg("")
-			exitVal |= exitvals.CheckInfo
+			elem := elem
+			exitVal |= conf.emit(rlog, internal.DCTL1021, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("host", elem)
+			})
 			continue
 		}
 
 		if !slices.Contains(append([]uint16{TypeNS, TypeCNAME}, okTypes...), templateType) {
-			rlog.Info().Str("host", elem).EmbedObject(internal.DCTL1021).Msg("")
-			exitVal |= exitvals.CheckInfo
+			elem := elem
+			exitVal |= conf.emit(rlog, internal.DCTL1021, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("host", elem)
+			})
 		}
 	}
 

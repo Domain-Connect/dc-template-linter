@@ -31,11 +31,10 @@ func (conf *Conf) checkRecord(
 
 	// Try to catch CNAME usage with other records
 	if t, ok := conflictingTypes[record.GroupID+"/"+record.Host]; ok && (t == strCNAME || record.Type == strCNAME) {
-		rlog.Error().
-			Str("host", record.Host).
-			Str("othertype", t).
-			EmbedObject(internal.DCTL1011).Msg("")
-		exitVal |= exitvals.CheckError
+		host := record.Host
+		exitVal |= conf.emit(rlog, internal.DCTL1011, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("host", host).Str("othertype", t)
+		})
 	}
 	conflictingTypes[record.GroupID+"/"+record.Host] = record.Type
 
@@ -44,130 +43,149 @@ func (conf *Conf) checkRecord(
 	case strCNAME, "NS":
 		if record.Host == "@" {
 			if template.MultiInstance && record.Type != "NS" {
-				rlog.Warn().EmbedObject(internal.DCTL1033).Msg("")
-				exitVal |= exitvals.CheckWarn
+				exitVal |= conf.emit(rlog, internal.DCTL1033, nil)
 			}
 			if conf.cloudflare {
-				rlog.Info().EmbedObject(internal.DCTL5007).Msg("")
-				exitVal |= exitvals.CheckInfo
+				exitVal |= conf.emit(rlog, internal.DCTL5007, nil)
 			} else if !template.HostRequired {
-				rlog.Error().EmbedObject(internal.DCTL1012).Msg("")
-				exitVal |= exitvals.CheckError
+				exitVal |= conf.emit(rlog, internal.DCTL1012, nil)
 			}
 		}
 		if record.Host == "" {
-			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "host")
+			})
 		}
-		exitVal |= targetCheck(record, "pointsTo", rlog)
+		exitVal |= targetCheck(conf, record, "pointsTo", rlog)
 	case "A", "AAAA":
 		if record.Host == "" {
-			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "host")
+			})
 		}
 		if !isVariable(record.PointsTo) {
 			ip := net.ParseIP(record.PointsTo)
 			if ip == nil {
-				rlog.Error().Str("pointsTo", record.PointsTo).EmbedObject(internal.DCTL1034).Msg("")
-				exitVal |= exitvals.CheckError
+				pointsTo := record.PointsTo
+				exitVal |= conf.emit(rlog, internal.DCTL1034, func(e *zerolog.Event) *zerolog.Event {
+					return e.Str("pointsTo", pointsTo)
+				})
 			} else {
 				if record.Type == "A" && ip.To4() == nil {
-					rlog.Error().Str("pointsTo", record.PointsTo).EmbedObject(internal.DCTL1035).Msg("")
-					exitVal |= exitvals.CheckError
+					pointsTo := record.PointsTo
+					exitVal |= conf.emit(rlog, internal.DCTL1035, func(e *zerolog.Event) *zerolog.Event {
+						return e.Str("pointsTo", pointsTo)
+					})
 				}
 				if record.Type == "AAAA" && ip.To4() != nil {
-					rlog.Error().Str("pointsTo", record.PointsTo).EmbedObject(internal.DCTL1036).Msg("")
-					exitVal |= exitvals.CheckError
+					pointsTo := record.PointsTo
+					exitVal |= conf.emit(rlog, internal.DCTL1036, func(e *zerolog.Event) *zerolog.Event {
+						return e.Str("pointsTo", pointsTo)
+					})
 				}
 			}
 		}
 
 	case "TXT":
 		if record.Host == "" {
-			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "host")
+			})
 		}
-		exitVal |= targetCheck(record, "data", rlog)
+		exitVal |= targetCheck(conf, record, "data", rlog)
 		if conf.cloudflare {
 			if record.TxtCMM != "" || record.TxtCMM == "None" {
-				rlog.Info().Str("key", "txtConflictMatchingMode").EmbedObject(internal.DCTL5008).Msg("")
-				exitVal |= exitvals.CheckInfo
+				exitVal |= conf.emit(rlog, internal.DCTL5008, func(e *zerolog.Event) *zerolog.Event {
+					return e.Str("key", "txtConflictMatchingMode")
+				})
 			}
 			if record.TxtCMP != "" {
-				rlog.Info().Str("key", "txtConflictMatchingPrefix").EmbedObject(internal.DCTL5008).Msg("")
-				exitVal |= exitvals.CheckInfo
+				exitVal |= conf.emit(rlog, internal.DCTL5008, func(e *zerolog.Event) *zerolog.Event {
+					return e.Str("key", "txtConflictMatchingPrefix")
+				})
 			}
 		} else if record.TxtCMM == "Prefix" && record.TxtCMP == "" {
-			rlog.Warn().Str("key", "txtConflictMatchingPrefix").EmbedObject(internal.DCTL1013).Msg("")
-			exitVal |= exitvals.CheckWarn
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "txtConflictMatchingPrefix")
+			})
 		}
 		if strings.Contains(record.Data, "v=spf1") {
-			rlog.Info().EmbedObject(internal.DCTL1014).Msg("")
-			exitVal |= exitvals.CheckInfo
+			exitVal |= conf.emit(rlog, internal.DCTL1014, nil)
 		}
 
 	case "MX":
 		if record.Host == "" {
-			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "host")
+			})
 		}
-		exitVal |= targetCheck(record, "pointsTo", rlog)
+		exitVal |= targetCheck(conf, record, "pointsTo", rlog)
 		if priority, ok := record.Priority.Uint32(); !ok || max31b < priority {
-			rlog.Error().Uint32("priority", priority).EmbedObject(internal.DCTL1015).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
+				return e.Uint32("priority", priority)
+			})
 		}
 
 	case "SRV":
-		exitVal |= targetCheck(record, "target", rlog)
+		exitVal |= targetCheck(conf, record, "target", rlog)
 		if isInvalidProtocol(record.Protocol) {
-			rlog.Warn().Str("protocol", record.Protocol).EmbedObject(internal.DCTL1015).Msg("")
-			exitVal |= exitvals.CheckWarn
+			proto := record.Protocol
+			exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("protocol", proto)
+			})
 		}
 		if priority, ok := record.Priority.Uint32(); !ok || max31b < priority {
-			rlog.Error().Uint32("priority", priority).EmbedObject(internal.DCTL1015).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
+				return e.Uint32("priority", priority)
+			})
 		}
 		if record.Service == "" {
-			rlog.Error().Str("key", "service").EmbedObject(internal.DCTL1013).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "service")
+			})
 		}
 		if weight, ok := record.Weight.Uint32(); !ok || max31b < weight {
-			rlog.Error().Uint32("weight", weight).EmbedObject(internal.DCTL1015).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
+				return e.Uint32("weight", weight)
+			})
 		}
 		if port, ok := record.Port.Uint16(); !ok || max16b < port {
-			rlog.Error().Uint16("port", port).EmbedObject(internal.DCTL1015).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
+				return e.Uint16("port", port)
+			})
 		}
 
 	case "SPFM":
 		if record.Host == "" {
-			rlog.Error().Str("key", "host").EmbedObject(internal.DCTL1013).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "host")
+			})
 		}
-		exitVal |= checkSPFRules(strings.ToLower(record.SPFRules), rlog)
+		exitVal |= checkSPFRules(conf, strings.ToLower(record.SPFRules), rlog)
 
 	case "APEXCNAME":
 		if conf.cloudflare {
-			rlog.Error().EmbedObject(internal.DCTL5009).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL5009, nil)
 		}
 
 	case "REDIR301", "REDIR302":
 		if record.Target == "" {
-			rlog.Error().Str("key", "target").EmbedObject(internal.DCTL1013).Msg("")
-			exitVal |= exitvals.CheckError
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "target")
+			})
 		}
 	default:
-		rlog.Info().EmbedObject(internal.DCTL1016).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(rlog, internal.DCTL1016, nil)
 	}
 
 	// Check use of underscore host names.
 	exitVal |= conf.checkUnderscoreNames(record.Type, record.Host)
 
 	if checkHostForDeniedChars(record.Host) {
-		rlog.Error().Str("host", record.Host).EmbedObject(internal.DCTL1027).Msg("")
+		host := record.Host
+		exitVal |= conf.emit(rlog, internal.DCTL1027, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("host", host)
+		})
 	}
 
 	// The spec does not tell type cannot be variable, but if/when it is
@@ -178,18 +196,20 @@ func (conf *Conf) checkRecord(
 	// DNS content. Domain Connect is expected to be powerful, but that
 	// is too much power.
 	if isVariable(record.Type) {
-		rlog.Error().Str("type", record.Type).EmbedObject(internal.DCTL1009).Msg("")
-		exitVal |= exitvals.CheckError
+		recType := record.Type
+		exitVal |= conf.emit(rlog, internal.DCTL1009, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("type", recType)
+		})
 	}
 
 	// A calid json int can be out of bounds in DNS
 	ttl, ok := record.TTL.Uint32()
 	if ok && MaxTTL < ttl {
-		rlog.Error().Uint32("ttl", ttl).EmbedObject(internal.DCTL1015).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
+			return e.Uint32("ttl", ttl)
+		})
 	} else if ok && conf.cloudflare && ttl == 0 {
-		rlog.Info().EmbedObject(internal.DCTL5010).Msg("")
-		exitVal |= exitvals.CheckInfo
+		exitVal |= conf.emit(rlog, internal.DCTL5010, nil)
 	}
 	if !ok && ttl == 0 && conf.inplace && 0 < conf.ttl && requiresTTL(record.Type) && isVariable(string(record.TTL)) {
 		rlog.Info().Uint32("ttl", conf.ttl).Msg("adding ttl to the record")
@@ -198,23 +218,26 @@ func (conf *Conf) checkRecord(
 
 	// Enforce Domain Connect spec
 	if isVariable(record.GroupID) {
-		rlog.Error().Str("groupId", record.GroupID).EmbedObject(internal.DCTL1009).Msg("")
-		exitVal |= exitvals.CheckError
+		groupID := record.GroupID
+		exitVal |= conf.emit(rlog, internal.DCTL1009, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("groupId", groupID)
+		})
 	}
 	if isVariable(record.TxtCMP) {
-		rlog.Error().Str("txtConflictMatchingPrefix", record.TxtCMP).EmbedObject(internal.DCTL1009).Msg("")
-		exitVal |= exitvals.CheckError
+		txtCMP := record.TxtCMP
+		exitVal |= conf.emit(rlog, internal.DCTL1009, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("txtConflictMatchingPrefix", txtCMP)
+		})
 	}
 
 	// DNS provider specific checks
 	if conf.cloudflare {
 		if record.Essential != "" {
-			rlog.Info().EmbedObject(internal.DCTL5011).Msg("")
-			exitVal |= exitvals.CheckInfo
+			exitVal |= conf.emit(rlog, internal.DCTL5011, nil)
 		}
 	}
 
-	exitVal |= findInvalidTemplateStrings(record, rlog)
+	exitVal |= findInvalidTemplateStrings(conf, record, rlog)
 
 	return exitVal
 }
@@ -259,7 +282,7 @@ var mutuallyExclusive = []string{
 	"target",
 }
 
-func targetCheck(record *internal.Record, requiredField string, rlog zerolog.Logger) exitvals.CheckSeverity {
+func targetCheck(conf *Conf, record *internal.Record, requiredField string, rlog zerolog.Logger) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 
 	recordTypes := reflect.TypeOf(*record)
@@ -271,14 +294,15 @@ func targetCheck(record *internal.Record, requiredField string, rlog zerolog.Log
 		if ok {
 			csv := strings.Split(jsonTag, ",")
 			if csv[0] == "" {
-				rlog.Error().EmbedObject(internal.DCTL0007).Msg("")
-				exitVal |= exitvals.CheckError
+				exitVal |= conf.emit(rlog, internal.DCTL0007, nil)
 				continue
 			}
 			if csv[0] == requiredField {
 				if reflect.ValueOf(*record).FieldByName(field.Name).String() == "" {
-					rlog.Error().Str("field", requiredField).EmbedObject(internal.DCTL0008).Msg("")
-					exitVal |= exitvals.CheckError
+					rf := requiredField
+					exitVal |= conf.emit(rlog, internal.DCTL0008, func(e *zerolog.Event) *zerolog.Event {
+						return e.Str("field", rf)
+					})
 				}
 				continue
 			}
@@ -287,8 +311,10 @@ func targetCheck(record *internal.Record, requiredField string, rlog zerolog.Log
 			}
 			if slices.Contains(mutuallyExclusive, csv[0]) {
 				if reflect.ValueOf(*record).FieldByName(field.Name).String() != "" {
-					rlog.Info().Str("field", csv[0]).EmbedObject(internal.DCTL0009).Msg("")
-					exitVal |= exitvals.CheckInfo
+					fieldName := csv[0]
+					exitVal |= conf.emit(rlog, internal.DCTL0009, func(e *zerolog.Event) *zerolog.Event {
+						return e.Str("field", fieldName)
+					})
 				}
 			}
 		}
@@ -304,20 +330,23 @@ type spfTrack struct {
 
 var modifierRe = regexp.MustCompile(`^((?i)[a-z][a-z0-9_.-]*)=(.*)`)
 
-func checkSPFRules(rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
+func checkSPFRules(conf *Conf, rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 
 	if rules == "" {
-		rlog.Error().Str("spfRules", "record spfRules is empty string").EmbedObject(internal.DCTL1013).Msg("")
-		return exitvals.CheckError
+		return conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("spfRules", "record spfRules is empty string")
+		})
 	}
 	if strings.HasPrefix(rules, "v=spf1") {
-		rlog.Error().Str("spfRules", "v=spf1").EmbedObject(internal.DCTL1017).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(rlog, internal.DCTL1017, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("spfRules", "v=spf1")
+		})
 	}
 	if strings.HasSuffix(rules, "all") {
-		rlog.Error().Str("spfRules", "all").EmbedObject(internal.DCTL1017).Msg("")
-		exitVal |= exitvals.CheckError
+		exitVal |= conf.emit(rlog, internal.DCTL1017, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("spfRules", "all")
+		})
 	}
 
 	fields := strings.Fields(rules)
@@ -334,19 +363,23 @@ func checkSPFRules(rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
 			switch matches[1] {
 			case "redirect":
 				if track.redirect {
-					rlog.Error().Str("field", "redirect").EmbedObject(internal.DCTL1018).Msg("")
-					exitVal |= exitvals.CheckError
+					exitVal |= conf.emit(rlog, internal.DCTL1018, func(e *zerolog.Event) *zerolog.Event {
+						return e.Str("field", "redirect")
+					})
 				}
 				track.redirect = true
 			case "exp":
 				if track.exp {
-					rlog.Error().Str("field", "exp").EmbedObject(internal.DCTL1018).Msg("")
-					exitVal |= exitvals.CheckError
+					exitVal |= conf.emit(rlog, internal.DCTL1018, func(e *zerolog.Event) *zerolog.Event {
+						return e.Str("field", "exp")
+					})
 				}
 				track.exp = true
 			default:
-				rlog.Error().Str("data", matches[1]).EmbedObject(internal.DCTL1017).Msg("")
-				exitVal |= exitvals.CheckError
+				data := matches[1]
+				exitVal |= conf.emit(rlog, internal.DCTL1017, func(e *zerolog.Event) *zerolog.Event {
+					return e.Str("data", data)
+				})
 			}
 			continue
 		}
@@ -371,8 +404,10 @@ func checkSPFRules(rules string, rlog zerolog.Logger) exitvals.CheckSeverity {
 		case "include", "a", "mx", "ptr", "ip4", "ip6", "exists":
 			// these are ok
 		default:
-			rlog.Error().Str("modifier", field).EmbedObject(internal.DCTL1017).Msg("")
-			exitVal |= exitvals.CheckError
+			modifier := field
+			exitVal |= conf.emit(rlog, internal.DCTL1017, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("modifier", modifier)
+			})
 		}
 	}
 
