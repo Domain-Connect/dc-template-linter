@@ -32,7 +32,7 @@ const (
 
 // ProjectVersion returns the dc-template-linter project version number.
 func ProjectVersion() uint {
-        return uint(internal.ProjectVersion)
+	return uint(internal.ProjectVersion)
 }
 
 // captureWriter is a zerolog-compatible io.Writer that parses each JSON log
@@ -265,6 +265,20 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	} else {
 		if _, isEmpty := groupIdTrack[""]; isEmpty {
 			exitVal |= conf.emit(conf.tlog, internal.DCTL1032, nil)
+		}
+	}
+
+	// Check hostRequired constraint: must have NS or CNAME record with host @ or empty
+	if template.HostRequired {
+		hasRequiredRecord := false
+		for _, record := range template.Records {
+			if (record.Type == "NS" || record.Type == "CNAME") && (record.Host == "@" || record.Host == "") {
+				hasRequiredRecord = true
+				break
+			}
+		}
+		if !hasRequiredRecord {
+			exitVal |= conf.emit(conf.tlog, internal.DCTL1037, nil)
 		}
 	}
 

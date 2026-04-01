@@ -167,12 +167,20 @@ func (conf *Conf) checkRecord(
 		if conf.cloudflare {
 			exitVal |= conf.emit(rlog, internal.DCTL5009, nil)
 		}
+		if record.PointsTo == "" {
+			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("key", "pointsTo")
+			})
+		}
 
 	case "REDIR301", "REDIR302":
 		if record.Target == "" {
 			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
 				return e.Str("key", "target")
 			})
+		}
+		if record.Host != "" {
+			exitVal |= targetCheck(conf, record, "target", rlog)
 		}
 	default:
 		exitVal |= conf.emit(rlog, internal.DCTL1016, nil)
@@ -269,7 +277,7 @@ func isInvalidProtocol(proto string) bool {
 
 func requiresTTL(recordType string) bool {
 	switch recordType {
-	case strCNAME, "NS", "A", "AAAA", "TXT", "MX", "SRV":
+	case strCNAME, "NS", "A", "AAAA", "TXT", "MX", "SRV", "APEXCNAME":
 		return true
 	}
 	return false
