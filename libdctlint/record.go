@@ -166,6 +166,8 @@ func (conf *Conf) checkRecord(
 	case "APEXCNAME":
 		if conf.cloudflare {
 			exitVal |= conf.emit(rlog, internal.DCTL5009, nil)
+		} else {
+			exitVal |= conf.emit(rlog, internal.DCTL1038, nil)
 		}
 		if record.PointsTo == "" {
 			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
@@ -174,6 +176,7 @@ func (conf *Conf) checkRecord(
 		}
 
 	case "REDIR301", "REDIR302":
+		exitVal |= conf.emit(rlog, internal.DCTL1038, nil)
 		if record.Target == "" {
 			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
 				return e.Str("key", "target")
