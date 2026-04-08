@@ -252,6 +252,12 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		groupIdTrack[record.GroupID] = struct{}{}
 	}
 
+	if conf.sharedvar != "" {
+		exitVal |= conf.emit(conf.tlog, internal.DCTL1039, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("variable", conf.sharedvar)
+		})
+	}
+
 	// Is the same groupId defined for all records. No groupId is fine
 	if len(groupIdTrack) == 1 {
 		_, isEmpty := groupIdTrack[""]

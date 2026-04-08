@@ -1,6 +1,7 @@
 package libdctlint
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
@@ -77,4 +78,23 @@ func checkSingleString(conf *Conf, input string, rlog zerolog.Logger) exitvals.C
 	}
 
 	return exitvals.CheckOK
+}
+
+func trailingVariable(conf *Conf, host string, rnum int) {
+	if rnum > 0 && conf.sharedvar == "" {
+		return
+	}
+	re := regexp.MustCompile(`%(.*)%`)
+	matches := re.FindStringSubmatch(host)
+	if len(matches) < 2 {
+		conf.sharedvar = ""
+		return
+	}
+	if host[len(host)-1] == '%' {
+		if rnum == 0 {
+			conf.sharedvar = matches[len(matches)-1]
+		} else if conf.sharedvar != matches[len(matches)-1] {
+			conf.sharedvar = ""
+		}
+	}
 }

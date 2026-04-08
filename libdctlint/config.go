@@ -31,6 +31,7 @@ type Conf struct {
 	indent      uint
 	lib         bool
 	messages    []DCTLMessage
+	sharedvar   string
 }
 
 // NewConf will create template check configuration.

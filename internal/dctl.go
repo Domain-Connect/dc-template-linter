@@ -66,6 +66,7 @@ const (
 	DCTL1036 DCTL = 1036
 	DCTL1037 DCTL = 1037
 	DCTL1038 DCTL = 1038
+	DCTL1039 DCTL = 1039
 
 	DCTL5000 DCTL = 5000
 	DCTL5001 DCTL = 5001
@@ -134,6 +135,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1036: "AAAA record points to IPv4 address",
 	DCTL1037: "hostRequired template should be combined with NS or CNAME record that uses host @ or empty",
 	DCTL1038: "APEXCNAME and REDIRxxx records are not widely supported",
+	DCTL1039: "all records use the same variable as suffix, consider using host parameter instead",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",
@@ -202,6 +204,7 @@ var dctlLevel = map[DCTL]zerolog.Level{
 	DCTL1036: zerolog.ErrorLevel,
 	DCTL1037: zerolog.InfoLevel,
 	DCTL1038: zerolog.InfoLevel,
+	DCTL1039: zerolog.InfoLevel,
 
 	// cloudflare messages
 	DCTL5000: zerolog.ErrorLevel,

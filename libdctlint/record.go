@@ -249,6 +249,7 @@ func (conf *Conf) checkRecord(
 	}
 
 	exitVal |= findInvalidTemplateStrings(conf, record, rlog)
+	trailingVariable(conf, record.Host, rnum)
 
 	return exitVal
 }
