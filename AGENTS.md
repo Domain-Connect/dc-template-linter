@@ -100,6 +100,17 @@ Template validation in this project is downstream from the official Domain Conne
 
 4. **Pretty Printing**: The `-pretty` and `-inplace` flags can reformat template JSON (note: removes zero-priority MX and SRV fields).
 
+5. **DCTL Error Codes**: Template issue reports use DCTL (Domain Connect Template Linter) codes documented in the project wiki:
+   - **Wiki URL**: https://github.com/Domain-Connect/dc-template-linter/wiki/
+   - **Example**: https://github.com/Domain-Connect/dc-template-linter/wiki/DCTL1001
+   - Each code has a dedicated wiki page explaining the issue and how to resolve it
+   - **Adding New Codes**: When introducing new DCTL codes, add them to the wiki repository:
+     - **Repository**: `git@github.com:Domain-Connect/dc-template-linter.wiki.git`
+     - **Format**: Markdown files (e.g., `DCTL1001.md`)
+     - **Content Requirements**:
+       - Explain why the issue is reported
+       - Provide guidance on how to prevent the issue from appearing
+
 ## Related Projects
 
 - **Templates Repository**: https://github.com/Domain-Connect/Templates.git - Public template repository
