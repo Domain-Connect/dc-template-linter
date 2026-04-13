@@ -8,6 +8,7 @@ package libdctlint
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Domain-Connect/dc-template-linter/exitvals"
 	"github.com/Domain-Connect/dc-template-linter/internal"
@@ -355,10 +357,17 @@ func (conf *Conf) isUnreachable(logoURL string) error {
 		return nil
 	}
 	conf.tlog.Debug().Str("url", logoURL).Msg("checking logo url")
-	resp, err := http.Get(logoURL)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, logoURL, nil)
 	if err != nil {
 		return err
 	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected http status %d", resp.StatusCode)
 	}
