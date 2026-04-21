@@ -25,19 +25,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func main() {
-	// Init logging. Essentially colors or no colors?
-	if isatty.IsTerminal(os.Stderr.Fd()) {
-		log.Logger = log.Output(
-			zerolog.ConsoleWriter{
-				Out:        os.Stderr,
-				TimeFormat: time.RFC3339,
-			},
-		)
-	} else {
-		zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	}
-
+func getRuntimeConf() *libdctlint.Conf {
 	// Command line option handling
 	flag.Usage = func() {
 		_, _ = fmt.Fprintf(os.Stderr, "Usage: %s [options] <template.json> [...]\n", os.Args[0])
@@ -77,7 +65,6 @@ func main() {
 
 	// Runtime init
 	internal.SetLoglevel(*loglevel)
-	exitVal := exitvals.CheckOK
 
 	log.Debug().Uint("version", internal.ProjectVersion).Msg("dc-template-linter version")
 
@@ -91,10 +78,33 @@ func main() {
 
 	conf := libdctlint.NewConf().
 		SetCheckLogos(*checkLogos).
-		SetPrettyPrint(*prettyPrint).
+		SetCloudflare(*cloudflare).
+		SetIncrement(*increment).
 		SetIndent(*indent).
+		SetInplace(*inplace).
 		SetMergeOrFail(*mergeOrFail).
-		SetCloudflare(*cloudflare)
+		SetPrettyPrint(*prettyPrint).
+		SetToleration(*toleration).
+		SetTTL(uint32(*ttl))
+
+	return conf
+}
+
+func main() {
+	// Init logging. Essentially colors or no colors?
+	if isatty.IsTerminal(os.Stderr.Fd()) {
+		log.Logger = log.Output(
+			zerolog.ConsoleWriter{
+				Out:        os.Stderr,
+				TimeFormat: time.RFC3339,
+			},
+		)
+	} else {
+		zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	}
+
+	exitVal := exitvals.CheckOK
+	conf := getRuntimeConf()
 
 	if flag.NArg() < 1 {
 		log.Debug().Msg("reading from stdin")
@@ -102,10 +112,6 @@ func main() {
 		reader := bufio.NewReader(os.Stdin)
 		exitVal = conf.CheckTemplate(reader)
 	} else {
-		conf.SetInplace(*inplace).
-			SetTTL(uint32(*ttl)).
-			SetIncrement(*increment)
-
 		for _, arg := range flag.Args() {
 			conf.SetFilename(arg)
 			f, err := os.Open(arg)
@@ -124,16 +130,16 @@ func main() {
 		}
 	}
 
-	switch *toleration {
-	case "any":
+	switch conf.GetToleration() {
+	case zerolog.Disabled:
 		exitVal = exitvals.CheckOK
-	case "error":
+	case zerolog.ErrorLevel:
 		exitVal &= exitvals.CheckFatal
-	case "warn":
+	case zerolog.WarnLevel:
 		exitVal &= exitvals.CheckFatal | exitvals.CheckError
-	case "info":
+	case zerolog.InfoLevel:
 		exitVal &= exitvals.CheckFatal | exitvals.CheckError | exitvals.CheckWarn
-	case "debug":
+	case zerolog.DebugLevel:
 		exitVal &= exitvals.CheckFatal | exitvals.CheckError | exitvals.CheckWarn | exitvals.CheckInfo
 	default:
 		// none

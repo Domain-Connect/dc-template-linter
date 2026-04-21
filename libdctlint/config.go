@@ -20,6 +20,7 @@ type DCTLMessage struct {
 type Conf struct {
 	fileName    string
 	tlog        zerolog.Logger
+	toleration  zerolog.Level
 	collision   map[string]bool
 	duplicates  map[uint64]bool
 	checkLogos  bool
@@ -50,6 +51,28 @@ func (c *Conf) SetFilename(fn string) *Conf {
 func (c *Conf) SetLogger(l zerolog.Logger) *Conf {
 	c.tlog = l
 	return c
+}
+
+func (c *Conf) SetToleration(s string) *Conf {
+	t := zerolog.DebugLevel
+	switch s {
+	case "any":
+		t = zerolog.Disabled
+	case "error":
+		t = zerolog.ErrorLevel
+	case "warn":
+		t = zerolog.WarnLevel
+	case "info":
+		t = zerolog.InfoLevel
+	case "debug":
+		t = zerolog.DebugLevel
+	}
+	c.toleration = t
+	return c
+}
+
+func (c *Conf) GetToleration() zerolog.Level {
+	return c.toleration
 }
 
 func (c *Conf) SetCheckLogos(b bool) *Conf {
