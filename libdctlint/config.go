@@ -23,6 +23,7 @@ type Conf struct {
 	collision   map[string]bool
 	duplicates  map[uint64]bool
 	checkLogos  bool
+	mergeOrFail bool
 	cloudflare  bool
 	inplace     bool
 	increment   bool
@@ -53,6 +54,11 @@ func (c *Conf) SetLogger(l zerolog.Logger) *Conf {
 
 func (c *Conf) SetCheckLogos(b bool) *Conf {
 	c.checkLogos = b
+	return c
+}
+
+func (c *Conf) SetMergeOrFail(b bool) *Conf {
+	c.mergeOrFail = b
 	return c
 }
 

@@ -48,6 +48,7 @@ func main() {
 	}
 	checkLogos := flag.Bool("logos", false, "check logo urls are reachable (requires network)")
 	cloudflare := flag.Bool("cloudflare", false, "use Cloudflare specific template rules")
+	mergeOrFail := flag.Bool("merge-or-fail", false, "the https://github.com/Domain-Connect/Templates auto-merge condition")
 	inplace := flag.Bool("inplace", false, "inplace write back pretty-print")
 	indent := flag.Uint("indent", 4, "number of spaces in an indent step of the pretty json")
 	increment := flag.Bool("increment", false, "increment template version, useful when pretty-printing")
@@ -62,6 +63,16 @@ func main() {
 	if *version {
 		_, _ = fmt.Printf("dc-template-linter version %d\n", internal.ProjectVersion)
 		os.Exit(0)
+	}
+
+	// Override loglevel and other options when --merge-or-fail is in use
+	if *mergeOrFail {
+		t := true
+		checkLogos = &t
+		tol := "debug"
+		toleration = &tol
+		ll := "info"
+		loglevel = &ll
 	}
 
 	// Runtime init
@@ -82,6 +93,7 @@ func main() {
 		SetCheckLogos(*checkLogos).
 		SetPrettyPrint(*prettyPrint).
 		SetIndent(*indent).
+		SetMergeOrFail(*mergeOrFail).
 		SetCloudflare(*cloudflare)
 
 	if flag.NArg() < 1 {

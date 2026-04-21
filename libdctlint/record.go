@@ -241,6 +241,14 @@ func (conf *Conf) checkRecord(
 		})
 	}
 
+	if conf.mergeOrFail && (checkBareVariables(record.PointsTo) || checkBareVariables(record.Host)) {
+		pointsTo := record.PointsTo
+		host := record.Host
+		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			return e.Str("pointsTo", pointsTo).Str("host", host)
+		})
+	}
+
 	// DNS provider specific checks
 	if conf.cloudflare {
 		if record.Essential != "" {
@@ -424,4 +432,29 @@ func checkSPFRules(conf *Conf, rules string, rlog zerolog.Logger) exitvals.Check
 	}
 
 	return exitVal
+}
+
+func checkBareVariables(s string) bool {
+	if s == "" {
+		return false
+	}
+
+	i := 0
+	for i < len(s) {
+		// Each segment must start with %
+		if s[i] != '%' {
+			return false
+		}
+
+		// Find the closing %
+		end := strings.Index(s[i+1:], "%")
+		if end == -1 {
+			return false
+		}
+
+		// Move past this variable (end is relative to i+1, so add 2 for both % chars)
+		i += end + 2
+	}
+
+	return true
 }
