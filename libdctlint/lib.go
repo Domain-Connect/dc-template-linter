@@ -160,7 +160,6 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 	err := validate.Struct(template)
 	if err != nil {
 		for _, verr := range err.(validator.ValidationErrors) {
-			verr := verr // capture loop var
 			exitVal |= conf.emit(conf.tlog, internal.DCTL1005, func(e *zerolog.Event) *zerolog.Event {
 				return e.Err(verr)
 			})
@@ -172,7 +171,6 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		err := validate.Struct(record)
 		if err != nil {
 			for _, verr := range err.(validator.ValidationErrors) {
-				verr := verr
 				exitVal |= conf.emit(conf.tlog, internal.DCTL1005, func(e *zerolog.Event) *zerolog.Event {
 					return e.Err(verr)
 				})

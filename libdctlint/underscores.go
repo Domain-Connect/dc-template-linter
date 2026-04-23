@@ -92,7 +92,7 @@ func (conf *Conf) checkUnderscoreNames(rrtype, host string) exitvals.CheckSeveri
 	rlog := conf.tlog.With().Str("type", rrtype).Logger()
 	exitVal := exitvals.CheckOK
 
-	for _, elem := range strings.Split(host, ".") {
+	for elem := range strings.SplitSeq(host, ".") {
 		location := strings.Index(elem, "_")
 		if location > 1 && isStaticLabelUnderscore(elem) {
 			elem := elem

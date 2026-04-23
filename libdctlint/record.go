@@ -305,7 +305,7 @@ var mutuallyExclusive = []string{
 func targetCheck(conf *Conf, record *internal.Record, requiredField string, rlog zerolog.Logger) exitvals.CheckSeverity {
 	exitVal := exitvals.CheckOK
 
-	recordTypes := reflect.TypeOf(*record)
+	recordTypes := reflect.TypeFor[internal.Record]()
 
 	for i := range recordTypes.NumField() {
 		field := recordTypes.Field(i)
