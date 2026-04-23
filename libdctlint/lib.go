@@ -367,7 +367,12 @@ func (conf *Conf) isUnreachable(logoURL string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	func() {
+		err := resp.Body.Close()
+		if err != nil {
+			conf.tlog.Warn().Err(err).Msg("could not close http body")
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected http status %d", resp.StatusCode)
 	}
