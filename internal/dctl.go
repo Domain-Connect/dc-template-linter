@@ -104,7 +104,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1003: "file name does not use required pattern",
 	DCTL1004: "duplicate provierId + serviceId detected",
 	DCTL1005: "template field validation",
-	DCTL1006: "use of negative version number",
+	DCTL1006: "template version number is not valid",
 	DCTL1007: "shared flag is deprecated, use sharedProviderName",
 	DCTL1008: "sharedProviderName is in use without 'shared' compatibility",
 	DCTL1009: "variable in invalid context",
