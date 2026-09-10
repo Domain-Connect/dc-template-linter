@@ -70,6 +70,7 @@ const (
 	DCTL1040 DCTL = 1040
 	DCTL1041 DCTL = 1041
 	DCTL1042 DCTL = 1042
+	DCTL1043 DCTL = 1043
 
 	DCTL5000 DCTL = 5000
 	DCTL5001 DCTL = 5001
@@ -142,6 +143,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1040: "bare variables in host or pointsTo record field",
 	DCTL1041: "invalid CAA record",
 	DCTL1042: "conflict matching prefix value is not valid",
+	DCTL1043: "merge-or-fail: human review is required",
 
 	// cloudflare messages
 	DCTL5000: "syncBlock is not supported",
@@ -214,6 +216,7 @@ var dctlLevel = map[DCTL]zerolog.Level{
 	DCTL1040: zerolog.ErrorLevel,
 	DCTL1041: zerolog.ErrorLevel,
 	DCTL1042: zerolog.WarnLevel,
+	DCTL1043: zerolog.ErrorLevel,
 
 	// cloudflare messages
 	DCTL5000: zerolog.ErrorLevel,

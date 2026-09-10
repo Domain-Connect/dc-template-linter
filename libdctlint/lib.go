@@ -233,6 +233,19 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		exitVal |= conf.emit(conf.tlog, internal.DCTL1029, nil)
 	}
 
+	if conf.mergeOrFail {
+		if template.SyncBlock {
+			exitVal |= conf.emit(conf.tlog, internal.DCTL1043, func(e *zerolog.Event) *zerolog.Event {
+				return e.Err(err).Str("syncBlock", "true")
+			})
+		}
+		if template.MultiInstance {
+			exitVal |= conf.emit(conf.tlog, internal.DCTL1043, func(e *zerolog.Event) *zerolog.Event {
+				return e.Err(err).Str("multiInstance", "true")
+			})
+		}
+	}
+
 	// DNS provider specific checks
 	if conf.cloudflare {
 		conf.tlog.Debug().Msg("performing Cloudflare checks")
