@@ -250,7 +250,7 @@ func (conf *Conf) checkRecord(
 		})
 	}
 
-	if conf.mergeOrFail && (checkBareVariables(record.PointsTo) || checkBareVariables(record.Host)) {
+	if conf.mergeOrFail && (checkBareVariables(record.PointsTo) && checkBareVariables(record.Host)) {
 		pointsTo := record.PointsTo
 		host := record.Host
 		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
