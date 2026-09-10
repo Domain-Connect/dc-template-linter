@@ -105,9 +105,9 @@ func (conf *Conf) checkRecord(
 					return e.Str("key", "txtConflictMatchingPrefix")
 				})
 			}
-		} else if record.TxtCMM == "Prefix" && record.TxtCMP == "" {
-			exitVal |= conf.emit(rlog, internal.DCTL1013, func(e *zerolog.Event) *zerolog.Event {
-				return e.Str("key", "txtConflictMatchingPrefix")
+		} else if record.TxtCMM == "Prefix" && (record.TxtCMP == "" || isVariable(record.TxtCMP)) {
+			exitVal |= conf.emit(rlog, internal.DCTL1042, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("prefix", record.TxtCMP)
 			})
 		}
 		if strings.Contains(record.Data, "v=spf1") {
