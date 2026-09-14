@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -23,7 +24,7 @@ type Template struct {
 	SyncPubKeyDomain    string  `json:"syncPubKeyDomain,omitempty" validate:"max=255"`
 	SyncRedirectDomain  string  `json:"syncRedirectDomain,omitempty"`
 	MultiInstance       bool    `json:"multiInstance,omitempty"`
-	WarnPhishing        bool    `json:"warnPhishing,omitempty"`
+	WarnPhishing        ObsBool `json:"warnPhishing,omitempty"`
 	HostRequired        bool    `json:"hostRequired,omitempty"`
 	Records             Records `json:"records"`
 }
@@ -97,4 +98,16 @@ func (sint *SINT) Uint16() (uint16, bool) {
 		return 0, strings.Count(string(*sint), "%") > 1
 	}
 	return uint16(i), true
+}
+
+type ObsBool bool
+
+var ErrWarnPhishing = errors.New("warnPhishing is obsolete")
+
+func (_ *ObsBool) UnmarshalJSON(_ []byte) error {
+	return ErrWarnPhishing
+}
+
+func (_ *ObsBool) MarshalJSON(_ []byte) error {
+	return nil
 }

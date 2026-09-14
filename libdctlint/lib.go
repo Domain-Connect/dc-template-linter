@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -101,10 +102,16 @@ func (conf *Conf) GetAndCheckTemplate(f *bufio.Reader) (internal.Template, exitv
 	var template internal.Template
 	err := decoder.Decode(&template)
 	if err != nil {
-		conf.emit(conf.tlog, internal.DCTL0003, func(e *zerolog.Event) *zerolog.Event {
-			return e.Err(err)
-		})
-		return template, exitvals.CheckFatal
+		if errors.Is(err, internal.ErrWarnPhishing) {
+			conf.emit(conf.tlog, internal.DCTL1028, func(e *zerolog.Event) *zerolog.Event {
+				return e.Err(err)
+			})
+		} else {
+			conf.emit(conf.tlog, internal.DCTL0003, func(e *zerolog.Event) *zerolog.Event {
+				return e.Err(err)
+			})
+			return template, exitvals.CheckFatal
+		}
 	}
 	exitVal := conf.checkTemplate(template)
 	return template, exitVal
@@ -223,10 +230,6 @@ func (conf *Conf) checkTemplate(template internal.Template) exitvals.CheckSeveri
 		exitVal |= conf.emit(conf.tlog, internal.DCTL1022, func(e *zerolog.Event) *zerolog.Event {
 			return e.Err(err).Str("SyncRedirectDomain", template.SyncRedirectDomain)
 		})
-	}
-
-	if template.WarnPhishing && template.SyncPubKeyDomain != "" {
-		exitVal |= conf.emit(conf.tlog, internal.DCTL1028, nil)
 	}
 
 	if !template.SyncBlock && template.SyncPubKeyDomain == "" {
@@ -486,9 +489,6 @@ func (conf *Conf) cloudflareTemplateChecks(template internal.Template) exitvals.
 	}
 	if template.MultiInstance {
 		exitVal |= conf.emit(conf.tlog, internal.DCTL5004, nil)
-	}
-	if template.WarnPhishing {
-		exitVal |= conf.emit(conf.tlog, internal.DCTL5005, nil)
 	}
 	if template.HostRequired {
 		exitVal |= conf.emit(conf.tlog, internal.DCTL5006, nil)

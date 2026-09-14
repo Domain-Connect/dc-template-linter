@@ -16,6 +16,7 @@ type DCTL uint16
 // 0001 - 0999  operating system and library errors
 // 1000 - 3999  domain connect specific messages
 // 5000 - 5200  cloudflare messages
+// Do not reuse the numbers to unrelated purposes
 const (
 	DCTL0001 DCTL = 1
 	DCTL0002 DCTL = 2
@@ -49,7 +50,6 @@ const (
 	DCTL1019 DCTL = 1019
 	DCTL1020 DCTL = 1020
 	// 1021 retired: the iana underscore-name check was removed.
-	// Do not reuse the number, old logs still refer to it.
 	DCTL1022 DCTL = 1022
 	DCTL1023 DCTL = 1023
 	DCTL1024 DCTL = 1024
@@ -128,7 +128,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1025: "use of underscore detected in a host: element",
 	DCTL1026: "syncRedirectDomain must be a comma separated values without whitespaces",
 	DCTL1027: "record host contains illegal character(s)",
-	DCTL1028: "warnPhishing and syncPubKeyDomain are mutually exclusive",
+	DCTL1028: "warnPhishing is obsolete",
 	DCTL1029: "template does not have syncPubKeyDomain",
 	DCTL1030: "template does not have any records",
 	DCTL1031: "all record groupId values are the same",
