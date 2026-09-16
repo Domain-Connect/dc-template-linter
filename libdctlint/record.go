@@ -224,7 +224,7 @@ func (conf *Conf) checkRecord(
 
 	// A calid json int can be out of bounds in DNS
 	ttl, ok := record.TTL.Uint32()
-	if ok && MaxTTL < ttl {
+	if !ok || (ok && MaxTTL < ttl) {
 		exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
 			return e.Uint32("ttl", ttl)
 		})
