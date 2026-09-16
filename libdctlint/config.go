@@ -30,6 +30,8 @@ type Conf struct {
 	increment   bool
 	prettyPrint bool
 	ttl         uint32
+	ttlMin      uint32
+	ttlMax      uint32
 	indent      uint
 	lib         bool
 	messages    []DCTLMessage
@@ -112,6 +114,16 @@ func (c *Conf) SetPrettyPrint(b bool) *Conf {
 
 func (c *Conf) SetTTL(t uint32) *Conf {
 	c.ttl = t
+	return c
+}
+
+func (c *Conf) SetTTLMin(t uint32) *Conf {
+	c.ttlMin = t
+	return c
+}
+
+func (c *Conf) SetTTLMax(t uint32) *Conf {
+	c.ttlMax = t
 	return c
 }
 

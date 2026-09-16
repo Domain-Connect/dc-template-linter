@@ -44,6 +44,8 @@ func getRuntimeConf() *libdctlint.Conf {
 	loglevel := flag.String("loglevel", "info", "loglevel can be one of: panic fatal error warn info debug trace")
 	toleration := flag.String("tolerate", "info", "non-zero return loglevel threshold: any error warn info debug none")
 	ttl := flag.Uint("ttl", 0, "-inplace ttl fix value to be used when template ttl is zero or invalid")
+	ttlMin := flag.Uint("ttl-min", 0, "warn if ttl smaller than given value, zero means not in use")
+	ttlMax := flag.Uint("ttl-max", 0, "warn if ttl greater than given value, zero means not in use")
 	version := flag.Bool("version", false, "output version information and exit")
 	flag.Parse()
 
@@ -61,6 +63,10 @@ func getRuntimeConf() *libdctlint.Conf {
 		toleration = &tol
 		ll := "info"
 		loglevel = &ll
+		ttlmin := uint(30)
+		ttlMin = &ttlmin
+		ttlmax := uint(86400)
+		ttlMax = &ttlmax
 	}
 
 	// Runtime init
@@ -85,7 +91,9 @@ func getRuntimeConf() *libdctlint.Conf {
 		SetMergeOrFail(*mergeOrFail).
 		SetPrettyPrint(*prettyPrint).
 		SetToleration(*toleration).
-		SetTTL(uint32(*ttl))
+		SetTTL(uint32(*ttl)).
+		SetTTLMin(uint32(*ttlMin)).
+		SetTTLMax(uint32(*ttlMax))
 
 	return conf
 }

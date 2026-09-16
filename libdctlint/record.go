@@ -223,17 +223,25 @@ func (conf *Conf) checkRecord(
 	}
 
 	// A calid json int can be out of bounds in DNS
-	ttl, ok := record.TTL.Uint32()
-	if !ok || (ok && MaxTTL < ttl) {
-		exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
-			return e.Uint32("ttl", ttl)
-		})
-	} else if ok && conf.cloudflare && ttl == 0 {
-		exitVal |= conf.emit(rlog, internal.DCTL5010, nil)
-	}
-	if !ok && ttl == 0 && conf.inplace && 0 < conf.ttl && requiresTTL(record.Type) && isVariable(string(record.TTL)) {
-		rlog.Info().Uint32("ttl", conf.ttl).Msg("adding ttl to the record")
-		record.TTL.SetUint32(conf.ttl)
+	if requiresTTL(record.Type) {
+		ttl, ok := record.TTL.Uint32()
+		if !ok || MaxTTL < ttl {
+			exitVal |= conf.emit(rlog, internal.DCTL1015, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("ttl", string(record.TTL))
+			})
+			if conf.inplace && 0 < conf.ttl && !isVariable(string(record.TTL)) {
+				rlog.Info().Uint32("ttl", conf.ttl).Msg("fixing record ttl")
+				record.TTL.SetUint32(conf.ttl)
+			}
+		} else if conf.cloudflare && ttl == 0 {
+			exitVal |= conf.emit(rlog, internal.DCTL5010, nil)
+		} else if !isVariable(string(record.TTL)) &&
+			((0 < conf.ttlMin && ttl < conf.ttlMin) ||
+				(0 < conf.ttlMax && conf.ttlMax < ttl)) {
+			exitVal |= conf.emit(rlog, internal.DCTL1044, func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("ttl", string(record.TTL))
+			})
+		}
 	}
 
 	// Enforce Domain Connect spec
