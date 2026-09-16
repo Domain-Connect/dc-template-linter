@@ -482,7 +482,7 @@ func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeveri
 	// check data is not empty
 	d := strings.TrimSpace(data)
 	if d == "" {
-		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+		exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 			return e.Str("empty record", "")
 		})
 		return exitVal
@@ -494,7 +494,7 @@ func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeveri
 	// Split into fields: expect at least flags, tag and value
 	fields := strings.Fields(d)
 	if len(fields) < 3 {
-		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+		exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 			return e.Int("numfields", len(fields))
 		})
 		return exitVal
@@ -503,7 +503,7 @@ func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeveri
 	// Validate flags (fields[0]) as unsigned integer 0..255
 	_, err := strconv.ParseUint(fields[0], 10, 8)
 	if err != nil {
-		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+		exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 			return e.Err(err)
 		})
 	}
@@ -511,7 +511,7 @@ func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeveri
 	// Validate tag (fields[1])
 	tag := fields[1]
 	if tag == "" || strings.ToLower(tag) != tag || !regexp.MustCompile(`^[a-z0-9]+$`).MatchString(tag) {
-		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+		exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 			return e.Str("invalid_tag", tag)
 		})
 	}
@@ -519,7 +519,7 @@ func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeveri
 	// Extract value as remaining fields
 	valueParts := fields[2:]
 	if len(valueParts) == 0 {
-		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+		exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 			return e.Str("empty_values", "")
 		})
 		return exitVal
@@ -528,7 +528,7 @@ func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeveri
 
 	// Value must be wrapped in double quotes; reject if not
 	if !(len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"') {
-		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+		exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 			return e.Str("missing_quotes", value)
 		})
 		return exitVal
@@ -537,7 +537,7 @@ func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeveri
 
 	// Validate value not empty
 	if value == "" {
-		exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+		exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 			return e.Str("empty_value", data)
 		})
 		return exitVal
@@ -552,14 +552,14 @@ func checkCAA(conf *Conf, data string, rlog zerolog.Logger) exitvals.CheckSeveri
 			main = strings.TrimSpace(main[:i])
 		}
 		if main == "" {
-			exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 				return e.Str("empty_issue", main)
 			})
 		}
 	case "iodef":
 		v := strings.ToLower(value)
 		if !(strings.HasPrefix(v, "mailto:") || strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://")) {
-			exitVal |= conf.emit(rlog, internal.DCTL1040, func(e *zerolog.Event) *zerolog.Event {
+			exitVal |= conf.emit(rlog, internal.DCTL1041, func(e *zerolog.Event) *zerolog.Event {
 				return e.Str("unexpected_iodef", v)
 			})
 		}
