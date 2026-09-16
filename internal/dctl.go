@@ -141,7 +141,7 @@ var dctlToString = map[DCTL]string{
 	DCTL1037: "hostRequired template should be combined with NS or CNAME record that uses host @ or empty",
 	DCTL1038: "APEXCNAME and REDIRxxx records are not widely supported",
 	DCTL1039: "all records use the same variable as suffix, consider using host parameter instead",
-	DCTL1040: "bare variables in host or pointsTo record field",
+	DCTL1040: "bare variables in host and pointsTo record fields",
 	DCTL1041: "invalid CAA record",
 	DCTL1042: "conflict matching prefix value is not valid",
 	DCTL1043: "merge-or-fail: human review is required",
